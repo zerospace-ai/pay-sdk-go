@@ -500,7 +500,7 @@ Run the `get_wallet_addresses` or `get_wallet_addresses.exe` executable file.
 
 * Prerequisite: The corresponding currency's fund pool must have a sufficient amount of funds to withdraw (especially for ETH network token withdrawals, which require a certain amount of ETH transaction fee balance in the fund pool wallet).
 
-* ⚠️ Note: **For blockchain withdrawals, please ensure that the pre-approval process is complete before calling the interface. Once a blockchain transaction is initiated, it cannot be revoked or returned. **
+* ⚠️ Note: **For blockchain withdrawals, please ensure that the pre-approval process is complete before calling the interface. Once a blockchain transaction is initiated, it cannot be revoked or returned.**
 
 #### HTTP Request
 
