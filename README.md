@@ -1,6 +1,8 @@
 # CryptoPay Go SDK
 
+![Go Version](https://img.shields.io/badge/go-1.18+-blue.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Telegram](https://img.shields.io/badge/chat-Telegram-blue?logo=telegram)](https://t.me/ZeroSerivce)
 
 ## Welcome to the CryptoPay Go SDK
 
