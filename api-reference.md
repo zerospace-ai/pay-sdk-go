@@ -29,8 +29,14 @@ Create a new platform user, requiring the user's unique ID, i.e., UserOpenId.
 Request Example:
 ```bash
 curl --location 'https://sandbox-api.privatex.io/sdk/user/create' \
+--header 'key: vratson2i5hjxgkd' \
+--header 'sign: 0592dc64d480fb119d1e07ce06011db8' \
+--header 'clientSign: xxxxxxxxxxxxxxxxx' \
 --header 'Content-Type: application/json' \
---data '{ "OpenId":"PT00001" }'
+--header 'timestamp: 1725076567682' \
+--data '{ 
+  "OpenId":"PT00001"
+}'
 ```
 Return Example:
 ```json
@@ -44,7 +50,7 @@ Return Example:
 }
 ```
 
-For more examples, see [examples.md](./examples.md).
+For Authentication & Security, please refer to [🧩 authentication.md](./authentication.md)
 
 ## Create Wallet (create_wallet) 💰
 
@@ -75,8 +81,15 @@ Create a wallet account for the user on the corresponding blockchain network.
 Request Example:
 ```bash
 curl --location 'https://sandbox-api.privatex.io/sdk/wallet/create' \
+--header 'key: vratson2i5hjxgkd' \
+--header 'sign: 0592dc64d480fb119d1e07ce06011db8' \
+--header 'clientSign: xxxxxxxxxxxxxxxxx' \
 --header 'Content-Type: application/json' \
---data '{ "OpenId":"PT00001", "ChainID":"1" }'
+--header 'timestamp: 1725076567682' \
+--data '{
+  "OpenId":"PT00001",
+  "ChainID":"1"
+}'
 ```
 Return Example:
 ```json
@@ -119,8 +132,15 @@ Get the user's blockchain wallet deposit address.
 Request Example:
 ```bash
 curl --location 'https://sandbox-api.privatex.io/sdk/wallet/getWalletAddresses' \
+--header 'key: vratson2i5hjxgkd' \
+--header 'sign: 0592dc64d480fb119d1e07ce06011db8' \
+--header 'clientSign: xxxxxxxxxxxxxxxxx' \
 --header 'Content-Type: application/json' \
---data '{ "OpenId":"PT00001", "ChainIDs":"56,2" }'
+--header 'timestamp: 1725076567682' \
+--data '{
+  "OpenId":"PT00001",
+  "ChainIDs":"56,2"
+}'
 ```
 Return Example:
 ```json
@@ -172,10 +192,45 @@ User withdrawal operation, transfer from partner account to user-specified addre
 | SafeCheckCode | No   | string | Security verification code      |
 
 ### Return Parameters
-Similar to other APIs, including code, msg, data, sign.
+
+| Parameter Name | Type | Description |
+| :-------- | :----- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| code | int | Status Code</br>0 Parameter error, duplicate order number, incorrect withdrawal address format, or insufficient withdrawal wallet fees. Detailed information can be found in msg.</br>1 The withdrawal transaction was successfully submitted and has been submitted to the blockchain network. The unique hash of the submitted transaction is contained in data.</br>2 The withdrawal transaction was successfully submitted and requires secondary channel review before the transaction can be completed. After the review is completed, the transaction information will be updated through a callback.</br>-1 The withdrawal transaction failed. You can resubmit the withdrawal request. |
+| msg | string | Status Description |
+| data | string | Transaction hash. If smart withdrawal is enabled, this field will be returned as an empty string. |
+| sign | string | Platform signature |
+| timestamp | string | Current timestamp in milliseconds converted to a string |
+
 
 ### Example
-Please refer to the withdrawal example in [examples.md](./examples.md).
+Request Example:
+```bash
+curl --location 'https://sandbox-api.privatex.io/sdk/partner/UserWithdrawByOpenID' \
+--header 'key: vratson2i5hjxgkd' \
+--header 'sign: 0592dc64d480fb119d1e07ce06011db8' \
+--header 'clientSign: xxxxxxxxxxxxxxxxx' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data '{ 
+  "OpenId": "PT00001", 
+  "TokenId": "4", 
+  "Amount": "0.02", 
+  "AddressTo": "TQdL5yttJPTx7hJmBhGfo2LcE7AXLPtHSg", 
+  "CallBackUrl": "http://xxxxxx/withdraw_callback", 
+  "SafeCheckCode": "1000000000000000"
+}'
+```
+
+Return example
+```json
+{
+    "sign": "D+VTPNiwGLzh9eIvkrscwS4UlGKzdnrBgB63RDG4HeobZT6FXqUwYCPgKojynKaxwm5PkmW0xhIASZ4asSCvnYfi0NSFehchZAtUnQIispxKcjsiudWsUznbkEIQ2h2TA/mbUZ1X9+wyh7QhNo6+RkxtgRyRpVb7ARG8pL14cdTAs OTtMLO0W1GO0M83VAv2ybBZNObncX9qy6tdwLQV/KYuNJYyMN0dL0nLKYHnj9Q4d3lEDM45AVJ0153/YIiIgcF BnOWhsQ9rVARcFeXeWd9KJ5OZpmxlxnhcJGcEUY2UDC4zKLZxtUet7CPAyehAMQ5plkpvRrR3Z6lA5zl6GQ==",
+    "timestamp": "1725439986754",
+    "data": "94f4c29eba73d53dcd3aa1b8cf90a98108d0acf82f38b97a4032dcdf7ff172e7",
+    "msg": "ok",
+    "code": 1
+}
+```
 
 ## Withdrawal Order Secondary Review 💳
 

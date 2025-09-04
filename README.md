@@ -117,6 +117,8 @@ import "github.com/spf13/viper"
 
 For detailed API descriptions, please refer to [🧩 api-reference.md](./api-reference.md) and [🧩 examples.md](./examples.md).
 
+For Authentication & Security, please refer to [🧩 authentication.md](./authentication.md)
+
 ## 📎 Appendix
 
 For more detailed references, please check the [Appendix](./appendix.md) document, which includes the following content:

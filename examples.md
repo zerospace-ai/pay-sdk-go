@@ -135,9 +135,17 @@ Let's use user creation as an example.
 
 ```
 
-## 2. Calling the Command 📞
+## 2. Generate Executable Interface Commands
 
-### 2.1. Registering a New User 🆕
+* 1. Execute the make command in the SDK root directory to generate binary executable files for each function command in the bin directory.
+
+* 2. The file with the ".exe" suffix runs on 64-bit Windows machines; the file without the ".exe" suffix runs on Linux/Mac. For example, create_user.exe and create_user executable files.
+
+* 3. Copy the configured config.yaml file to the bin directory.
+
+## 3. Calling the Command 📞
+
+### 3.1. Registering a New User 🆕
 
 
 Go to the SDK's bin directory and modify the UserOpenId field in the config.yaml file there.
@@ -147,19 +155,19 @@ Run the create_user or create_user.exe executable file to register a new user on
 If you attempt to register a new UserOpenId that has already been registered, an error will be returned.
 
 
-### 2.2. Wallet Registration 💼
+### 3.2. Wallet Registration 💼
 
 Go to the SDK's bin directory and specify the `UserOpenId` and `ChainID` fields in the `config.yaml` file.
 
 Run the `create_wallet` or `create_wallet.exe` executable file to complete the user's wallet registration on the platform.
 
-### 2.3. Get Deposit Address 📍
+### 3.3. Get Deposit Address 📍
 
 Go to the SDK's bin directory and specify the `UserOpenId` and `ChainIDs` fields in `config.yaml`.
 
 Run the `get_wallet_addresses` or `get_wallet_addresses.exe` executable file.
 
-### 2.4. Withdrawals 💸
+### 3.4. Withdrawals 💸
 
 Go to the SDK's bin directory and specify the `UserOpenId`, `TokenId`, `Amount`, `AddressTo`, `SafeCheckCode`, and `CallbackUrl` fields in `config.yaml`.
 
