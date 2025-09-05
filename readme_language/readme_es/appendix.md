@@ -1,4 +1,7 @@
-# Apéndice 📖
+- [Lista de ChainID 🔗](#lista-de-chainid-)
+- [Tipos de Token 💰](#tipos-de-token-)
+- [Información Pública 📢](#información-pública-)
+- [Información Básica de Token 🔑](#información-básica-de-token-)
 
 ## Lista de ChainID 🔗
 
