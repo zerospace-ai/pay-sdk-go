@@ -1,4 +1,5 @@
-This document helps developers integrate with PrivateX API using secure RSA authentication.
+This document helps developers integrate with CryptoPay API.
+
 Please select your language:
 
 • [🇺🇸 English](./readme_language/readme_en/README.md)
