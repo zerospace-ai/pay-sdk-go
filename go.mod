@@ -1,6 +1,6 @@
 module github.com/zerospace-ai/pay-sdk-go
 
-go 1.18.0
+go 1.23.0
 
 require (
 	github.com/gin-gonic/gin v1.10.1
