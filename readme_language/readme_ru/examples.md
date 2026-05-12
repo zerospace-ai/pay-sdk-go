@@ -1,174 +1,89 @@
-# Примеры 📝
+# Примеры и инструменты
 
-Этот документ предоставляет примеры использования CryptoPay Go SDK, включая запуск Demo, генерацию ключей и обработку обратных вызовов.
+Этот документ разделен на две части:
+1. **Примеры кода на основе сценариев:** Демонстрирует, как обрабатывать вызовы API и проверки в практическом коде.
+2. **Руководство по инструментам CLI:** Объясняет, как использовать скомпилированные исполняемые файлы, поставляемые с SDK, для быстрого тестирования.
 
-## 1 Объект экземпляра SDK 🛠️
+---
 
-### 1.1 Необходимая конфигурация ⚙️
+## 1. Примеры кода на основе сценариев
 
-1. Зарегистрируйте название вашего бизнеса и получите `ApiKey` и `ApiSecret`;
+### 1.1 Полный вызов API и проверка ответа
 
-2. Сгенерируйте свою собственную пару ключей `RSA`;
+В следующем коде показано, как использовать SDK для создания запроса "Создать пользователя", отправки HTTP-запроса и проверки безопасности подписи данных, возвращаемых платформой.
 
-3. Подготовьте публичный ключ `RSA` платформы;
+```go
+package main
 
-### 1.2 Создание объекта подписи 🔏
+import (
+	"fmt"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+	"github.com/zerospace-ai/pay-sdk-go/example/common"
+	"github.com/zerospace-ai/pay-sdk-go/response_define"
+)
 
-1. Добавьте файл конфигурации `config.yaml`.
+func main() {
+	// 1. Инициализация SDK и повторное использование клиента Resty (предварительное условие: config.yaml настроен)
+	_, apiObj := common.Init()
 
-```yaml
-# Настройка информации о бизнесе
-ApiKey: ""
-ApiSecret: ""
-# Публичный ключ платформы
-PlatformPubKey: ""
-# Публичный ключ для блокировки платформы
-PlatformRiskPubKey: ""
-# Ваш собственный приватный ключ
-RsaPrivateKey: ""
-```
-
-2. Загрузите файл конфигурации и создайте объект API.
-
-```golang
-
-	viper.SetConfigFile("config.yaml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("Failed to load config: %s", err))
-	}
-	apiObj := api.NewSDK(api.SDKConfig{
-		ApiKey:             viper.GetString("ApiKey"),
-		ApiSecret:          viper.GetString("ApiSecret"),
-		PlatformPubKey:     viper.GetString("PlatformPubKey"),
-		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-	})
-
-```
-
-### 1.3 Создание и подпись данных запроса. ✍️
-
-Возьмем создание пользователя в качестве примера.
-
-```golang
-
-  // ....
+	// 2. Создание параметров запроса и заголовка подписи
 	openId := "HASH1756194148"
-
 	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
 	if err != nil {
-		logrus.Warnln("Error: ", err)
+		fmt.Println("Ошибка при создании запроса: ", err)
 		return
 	}
 
+	// 3. Отправка запроса и автоматическая проверка подписи ответа
+	var rspCreateUser response_define.ResponseCreateUser
+	err = common.ExecuteRequest(api.PathCreateUser, reqBody, timestamp, sign, clientSign, &rspCreateUser)
+	if err != nil {
+		fmt.Println("Ошибка запроса или проверки: ", err)
+		return
+	}
+
+	fmt.Println("✅ Запрос успешен и проверен! Возвращенный OpenId:", rspCreateUser.Data.OpenId)
+}
 ```
 
-```golang
-    dataStr := rsa_utils.ComposeParams(mapData)
 
-	timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
-	sign = s.GenerateMD5Sign(dataStr, timestamp)
+---
 
-	jStr, err := json.Marshal(&req)
-	if err != nil {
-		return nil, timestamp, sign, clientSign, err
-	}
+## 2. Руководство по использованию инструментов CLI
 
-	reqMapObj := rsa_utils.ToStringMap(jStr)
-	clientSign, err = s.GenerateRSASignature(reqMapObj)
-```
+SDK предоставляет бинарные файлы интерфейса командной строки (CLI) для быстрого тестирования каждой конечной точки API.
 
-### 1.4 Заполнение и инициирование запроса 🚀
+### 2.1 Компиляция исполняемых файлов
 
-```golang
-  // ....
-	
-	finalURL, err := url.JoinPath(api.DevNetEndpoint, api.PathCreateWallet)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
+Выполните команду `make` в корневом каталоге SDK, и система сгенерирует бинарные исполняемые файлы для каждой функции в каталоге `bin`.
+* **Windows:** Генерирует файлы, оканчивающиеся на `.exe` (например, `create_user.exe`).
+* **Mac/Linux:** Генерирует файлы без суффиксов (например, `create_user`).
 
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(reqBody).
-		SetHeader("key", apiObj.GetApiKey()).
-		SetHeader("timestamp", timestamp).
-		SetHeader("sign", sign).
-		SetHeader("clientSign", clientSign).
-		Post(finalURL)
+### 2.2 Подготовка файла конфигурации
 
-```
+Перед запуском инструментов убедитесь, что настроенный файл `config.yaml` помещен в каталог `bin`.
 
-### 1.5 Проверка и разбор возвращаемых данных ✅
+### 2.3 Тестирование команд конечной точки
 
-```golang
+#### Регистрация нового пользователя
+1. Измените поле `UserOpenId` в `bin/config.yaml`.
+2. Запустите `./create_user` (или дважды щелкните `create_user.exe`).
+3. Если OpenId уже зарегистрирован, инструмент вернет ошибку.
 
-	rspCommon := response_define.ResponseCommon{}
-	err = json.Unmarshal(body, &rspCommon)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("Response: ", rspCommon)
+#### Регистрация кошелька
+1. Укажите `UserOpenId` и `ChainID` в `bin/config.yaml`.
+2. Запустите `./create_wallet`.
 
-	if rspCommon.Code != response_define.SUCCESS {
-		logrus.Warnln("Response fail Code", rspCommon.Code, "Msg", rspCommon.Msg)
-		return
-	}
+#### Получить адреса пополнения
+1. Укажите `UserOpenId` и запрашиваемые `ChainIDs` (например, "1,56") в `bin/config.yaml`.
+2. Запустите `./get_wallet_addresses`.
 
-	rspCreateUser := response_define.ResponseCreateUser{}
-	err = json.Unmarshal(body, &rspCreateUser)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("ResponseCreateUser: ", rspCreateUser)
-
-	mapObj := rsa_utils.ToStringMap(body)
-	err = apiObj.VerifyRSAsignature(mapObj, rspCreateUser.Sign)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-
-```
-
-## 2. Генерация исполняемых команд интерфейса
-
-* 1. Выполните команду make в корневом каталоге SDK, чтобы сгенерировать бинарные исполняемые файлы для каждой функциональной команды в каталоге bin.
-
-* 2. Файл с суффиксом ".exe" запускается на 64-битных машинах Windows; файл без суффикса ".exe" запускается на Linux/Mac. Например, create_user.exe и create_user исполняемые файлы.
-
-* 3. Скопируйте настроенный файл config.yaml в каталог bin.
-
-## 3. Вызов команды 📞
-
-### 3.1. Регистрация нового пользователя 🆕
-
-
-Перейдите в каталог bin SDK и измените поле UserOpenId в файле config.yaml там.
-
-Запустите исполняемый файл create_user или create_user.exe, чтобы зарегистрировать нового пользователя на платформе.
-
-Если вы попытаетесь зарегистрировать новый UserOpenId, который уже зарегистрирован, будет возвращена ошибка.
-
-
-### 3.2. Регистрация кошелька 💼
-
-Перейдите в каталог bin SDK и укажите поля `UserOpenId` и `ChainID` в файле `config.yaml`.
-
-Запустите исполняемый файл `create_wallet` или `create_wallet.exe`, чтобы завершить регистрацию кошелька пользователя на платформе.
-
-### 3.3. Получение адреса пополнения 📍
-
-Перейдите в каталог bin SDK и укажите поля `UserOpenId` и `ChainIDs` в `config.yaml`.
-
-Запустите исполняемый файл `get_wallet_addresses` или `get_wallet_addresses.exe`.
-
-### 3.4. Вывод средств 💸
-
-Перейдите в каталог bin SDK и укажите поля `UserOpenId`, `TokenId`, `Amount`, `AddressTo`, `SafeCheckCode` и `CallbackUrl` в `config.yaml`.
-
-Запустите исполняемый файл `user_withdraw_by_open_id` или `user_withdraw_by_open_id.exe`.
+#### Заявка на вывод средств
+1. Укажите следующее в `bin/config.yaml`:
+   * `UserOpenId`
+   * `TokenId`
+   * `Amount`
+   * `AddressTo`
+   * `SafeCheckCode` (Уникальный код для предотвращения дублирования заказа)
+   * `CallbackUrl`
+2. Запустите `./user_withdraw_by_open_id`.

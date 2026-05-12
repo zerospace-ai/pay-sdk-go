@@ -1,174 +1,89 @@
-# Examples 📝
+# Examples and Tools
 
-This document provides usage examples for the CryptoPay Go SDK, including Demo running, key generation, and callback handling.
+This document is divided into two parts:
+1. **Scenario-Based Code Examples:** Demonstrates how to handle API calls and verification in practical code.
+2. **CLI Tools Guide:** Explains how to use the compiled executable files included with the SDK for quick testing.
 
-## 1 SDK Instance Object 🛠️
+---
 
-### 1.1 Required Configuration ⚙️
+## 1. Scenario-Based Code Examples
 
-1. Register your business name and obtain the `ApiKey` and `ApiSecret`;
+### 1.1 Complete API Call and Response Verification
 
-2. Generate your own `RSA` key pair;
+The following code demonstrates how to use the SDK to build a "Create User" request, send the HTTP request, and verify the security of the signature of the data returned by the platform.
 
-3. Prepare the platform's `RSA` public key;
+```go
+package main
 
-### 1.2 Creating a Signature Object 🔏
+import (
+	"fmt"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+	"github.com/zerospace-ai/pay-sdk-go/example/common"
+	"github.com/zerospace-ai/pay-sdk-go/response_define"
+)
 
-1. Add a configuration file `config.yaml`.
+func main() {
+	// 1. Initialize SDK and Reuse Resty Client (Prerequisite: config.yaml is configured)
+	_, apiObj := common.Init()
 
-```yaml
-# Configure business information
-ApiKey: ""
-ApiSecret: ""
-# Platform public key
-PlatformPubKey: ""
-# Public key for blocking the platform
-PlatformRiskPubKey: ""
-# Your own private key
-RsaPrivateKey: ""
-```
-
-2. Load the configuration file and create the API object.
-
-```golang
-
-	viper.SetConfigFile("config.yaml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("Failed to load config: %s", err))
-	}
-	apiObj := api.NewSDK(api.SDKConfig{
-		ApiKey:             viper.GetString("ApiKey"),
-		ApiSecret:          viper.GetString("ApiSecret"),
-		PlatformPubKey:     viper.GetString("PlatformPubKey"),
-		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-	})
-
-```
-
-### 1.3 Create and sign the request data. ✍️
-
-Let's use user creation as an example.
-
-```golang
-
-  // ....
+	// 2. Generate request parameters and signature Header
 	openId := "HASH1756194148"
-
 	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
 	if err != nil {
-		logrus.Warnln("Error: ", err)
+		fmt.Println("Failed to build request: ", err)
 		return
 	}
 
+	// 3. Send request and automatically verify response signature
+	var rspCreateUser response_define.ResponseCreateUser
+	err = common.ExecuteRequest(api.PathCreateUser, reqBody, timestamp, sign, clientSign, &rspCreateUser)
+	if err != nil {
+		fmt.Println("Request or verification failed: ", err)
+		return
+	}
+
+	fmt.Println("✅ Request successful and verified! Returned OpenId:", rspCreateUser.Data.OpenId)
+}
 ```
 
-```golang
-    dataStr := rsa_utils.ComposeParams(mapData)
 
-	timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
-	sign = s.GenerateMD5Sign(dataStr, timestamp)
+---
 
-	jStr, err := json.Marshal(&req)
-	if err != nil {
-		return nil, timestamp, sign, clientSign, err
-	}
+## 2. CLI Tools Usage Guide
 
-	reqMapObj := rsa_utils.ToStringMap(jStr)
-	clientSign, err = s.GenerateRSASignature(reqMapObj)
-```
+The SDK provides Command Line Interface (CLI) binary files for quickly testing each API endpoint.
 
-### 1.4 Filling in and Initiating the Request 🚀
+### 2.1 Compile Executable Files
 
-```golang
-  // ....
-	
-	finalURL, err := url.JoinPath(api.DevNetEndpoint, api.PathCreateWallet)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
+Run the `make` command in the SDK root directory, and the system will generate binary executable files for each function in the `bin` directory.
+* **Windows:** Generates files ending in `.exe` (e.g., `create_user.exe`).
+* **Mac/Linux:** Generates files without suffixes (e.g., `create_user`).
 
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(reqBody).
-		SetHeader("key", apiObj.GetApiKey()).
-		SetHeader("timestamp", timestamp).
-		SetHeader("sign", sign).
-		SetHeader("clientSign", clientSign).
-		Post(finalURL)
+### 2.2 Prepare Configuration File
 
-```
+Before running the tools, ensure that the configured `config.yaml` file is placed in the `bin` directory.
 
-### 1.5 Verify parsing return data ✅
+### 2.3 Testing Endpoint Commands
 
-```golang
+#### Register New User
+1. Modify the `UserOpenId` field in `bin/config.yaml`.
+2. Run `./create_user` (or double-click `create_user.exe`).
+3. If the OpenId is already registered, the tool will return an error.
 
-	rspCommon := response_define.ResponseCommon{}
-	err = json.Unmarshal(body, &rspCommon)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("Response: ", rspCommon)
+#### Wallet Registration
+1. Specify `UserOpenId` and `ChainID` in `bin/config.yaml`.
+2. Run `./create_wallet`.
 
-	if rspCommon.Code != response_define.SUCCESS {
-		logrus.Warnln("Response fail Code", rspCommon.Code, "Msg", rspCommon.Msg)
-		return
-	}
+#### Get Deposit Addresses
+1. Specify `UserOpenId` and the queried `ChainIDs` (e.g., "1,56") in `bin/config.yaml`.
+2. Run `./get_wallet_addresses`.
 
-	rspCreateUser := response_define.ResponseCreateUser{}
-	err = json.Unmarshal(body, &rspCreateUser)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("ResponseCreateUser: ", rspCreateUser)
-
-	mapObj := rsa_utils.ToStringMap(body)
-	err = apiObj.VerifyRSAsignature(mapObj, rspCreateUser.Sign)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-
-```
-
-## 2. Generate Executable Interface Commands
-
-* 1. Execute the make command in the SDK root directory to generate binary executable files for each function command in the bin directory.
-
-* 2. The file with the ".exe" suffix runs on 64-bit Windows machines; the file without the ".exe" suffix runs on Linux/Mac. For example, create_user.exe and create_user executable files.
-
-* 3. Copy the configured config.yaml file to the bin directory.
-
-## 3. Calling the Command 📞
-
-### 3.1. Registering a New User 🆕
-
-
-Go to the SDK's bin directory and modify the UserOpenId field in the config.yaml file there.
-
-Run the create_user or create_user.exe executable file to register a new user on the platform.
-
-If you attempt to register a new UserOpenId that has already been registered, an error will be returned.
-
-
-### 3.2. Wallet Registration 💼
-
-Go to the SDK's bin directory and specify the `UserOpenId` and `ChainID` fields in the `config.yaml` file.
-
-Run the `create_wallet` or `create_wallet.exe` executable file to complete the user's wallet registration on the platform.
-
-### 3.3. Get Deposit Address 📍
-
-Go to the SDK's bin directory and specify the `UserOpenId` and `ChainIDs` fields in `config.yaml`.
-
-Run the `get_wallet_addresses` or `get_wallet_addresses.exe` executable file.
-
-### 3.4. Withdrawals 💸
-
-Go to the SDK's bin directory and specify the `UserOpenId`, `TokenId`, `Amount`, `AddressTo`, `SafeCheckCode`, and `CallbackUrl` fields in `config.yaml`.
-
-Run the `user_withdraw_by_open_id` or `user_withdraw_by_open_id.exe` executable file.
+#### Apply for Withdrawal
+1. Specify the following in `bin/config.yaml`:
+   * `UserOpenId`
+   * `TokenId`
+   * `Amount`
+   * `AddressTo`
+   * `SafeCheckCode` (Unique order anti-duplication code)
+   * `CallbackUrl`
+2. Run `./user_withdraw_by_open_id`.

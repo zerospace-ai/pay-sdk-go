@@ -1,174 +1,89 @@
-# 範例 📝
+# 示例代碼與工具
 
-本文件提供 CryptoPay Go SDK 的使用範例，包括 Demo 運行、金鑰生成和回調處理。
+本文檔分為兩部分：
+1. **場景化代碼示例：** 演示在實際代碼中如何處理 API 的調用與驗證。
+2. **命令行工具指南：** 介紹如何使用 SDK 附帶的編譯後執行文件進行快速測試。
 
-## 1 SDK 實例物件 🛠️
+---
 
-### 1.1 所需配置 ⚙️
+## 1. 場景化代碼示例
 
-1. 註冊您的業務名稱並獲取 `ApiKey` 和 `ApiSecret`；
+### 1.1 完整的 API 調用與響應驗證
 
-2. 生成您自己的 `RSA` 金鑰對；
+以下代碼展示了如何利用 SDK 構建一個“創建用戶”請求，發送 HTTP 請求，並對平台返回的數據簽名進行安全驗證。
 
-3. 準備平台的 `RSA` 公鑰；
+```go
+package main
 
-### 1.2 創建簽名物件 🔏
+import (
+	"fmt"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+	"github.com/zerospace-ai/pay-sdk-go/example/common"
+	"github.com/zerospace-ai/pay-sdk-go/response_define"
+)
 
-1. 添加配置文件 `config.yaml`。
+func main() {
+	// 1. 初始化 SDK 與複用 Resty 客戶端 (前提：config.yaml 已配置)
+	_, apiObj := common.Init()
 
-```yaml
-# 配置業務信息
-ApiKey: ""
-ApiSecret: ""
-# 平台公鑰
-PlatformPubKey: ""
-# 用於封鎖平台的公鑰
-PlatformRiskPubKey: ""
-# 您自己的私鑰
-RsaPrivateKey: ""
-```
-
-2. 加載配置文件並創建 API 物件。
-
-```golang
-
-	viper.SetConfigFile("config.yaml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("Failed to load config: %s", err))
-	}
-	apiObj := api.NewSDK(api.SDKConfig{
-		ApiKey:             viper.GetString("ApiKey"),
-		ApiSecret:          viper.GetString("ApiSecret"),
-		PlatformPubKey:     viper.GetString("PlatformPubKey"),
-		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-	})
-
-```
-
-### 1.3 創建並簽名請求數據。 ✍️
-
-讓我們以用戶創建為例。
-
-```golang
-
-  // ....
+	// 2. 生成請求參數和簽名 Header
 	openId := "HASH1756194148"
-
 	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
 	if err != nil {
-		logrus.Warnln("Error: ", err)
+		fmt.Println("構建請求失敗: ", err)
 		return
 	}
 
+	// 3. 發送請求並自動驗證響應簽名
+	var rspCreateUser response_define.ResponseCreateUser
+	err = common.ExecuteRequest(api.PathCreateUser, reqBody, timestamp, sign, clientSign, &rspCreateUser)
+	if err != nil {
+		fmt.Println("請求或驗證失敗: ", err)
+		return
+	}
+
+	fmt.Println("✅ 請求成功並驗證通過！返回的 OpenId:", rspCreateUser.Data.OpenId)
+}
 ```
 
-```golang
-    dataStr := rsa_utils.ComposeParams(mapData)
 
-	timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
-	sign = s.GenerateMD5Sign(dataStr, timestamp)
+---
 
-	jStr, err := json.Marshal(&req)
-	if err != nil {
-		return nil, timestamp, sign, clientSign, err
-	}
+## 2. 命令行工具使用指南
 
-	reqMapObj := rsa_utils.ToStringMap(jStr)
-	clientSign, err = s.GenerateRSASignature(reqMapObj)
-```
+SDK 提供了快速測試各接口的命令行工具二進制文件（CLI）。
 
-### 1.4 填充並發起請求 🚀
+### 2.1 編譯執行文件
 
-```golang
-  // ....
-	
-	finalURL, err := url.JoinPath(api.DevNetEndpoint, api.PathCreateWallet)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
+在 SDK 根目錄下執行 `make` 命令，系統將在 `bin` 目錄下生成各功能的二進制可執行文件。
+* **Windows:** 生成 `.exe` 結尾的文件（如 `create_user.exe`）。
+* **Mac/Linux:** 生成無後綴的文件（如 `create_user`）。
 
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(reqBody).
-		SetHeader("key", apiObj.GetApiKey()).
-		SetHeader("timestamp", timestamp).
-		SetHeader("sign", sign).
-		SetHeader("clientSign", clientSign).
-		Post(finalURL)
+### 2.2 準備配置文件
 
-```
+運行工具前，請確保將配置好的 `config.yaml` 文件放置在 `bin` 目錄中。
 
-### 1.5 驗證解析返回數據 ✅
+### 2.3 測試各接口命令
 
-```golang
+#### 註冊新用戶
+1. 在 `bin/config.yaml` 中修改 `UserOpenId` 字段。
+2. 運行 `./create_user` (或雙擊 `create_user.exe`)。
+3. 若該 OpenId 已註冊，工具將返回錯誤。
 
-	rspCommon := response_define.ResponseCommon{}
-	err = json.Unmarshal(body, &rspCommon)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("Response: ", rspCommon)
+#### 錢包註冊
+1. 在 `bin/config.yaml` 中指定 `UserOpenId` 和 `ChainID`。
+2. 運行 `./create_wallet`。
 
-	if rspCommon.Code != response_define.SUCCESS {
-		logrus.Warnln("Response fail Code", rspCommon.Code, "Msg", rspCommon.Msg)
-		return
-	}
+#### 獲取充值地址
+1. 在 `bin/config.yaml` 中指定 `UserOpenId` 和需要查詢的 `ChainIDs` (例如 "1,56")。
+2. 運行 `./get_wallet_addresses`。
 
-	rspCreateUser := response_define.ResponseCreateUser{}
-	err = json.Unmarshal(body, &rspCreateUser)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("ResponseCreateUser: ", rspCreateUser)
-
-	mapObj := rsa_utils.ToStringMap(body)
-	err = apiObj.VerifyRSAsignature(mapObj, rspCreateUser.Sign)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-
-```
-
-## 2. 生成可執行接口命令
-
-* 1. 在 SDK 根目錄中執行 make 命令，在 bin 目錄中生成每個功能命令的二進制可執行文件。
-
-* 2. 帶有 ".exe" 後綴的文件在 64 位 Windows 機器上運行；不帶 ".exe" 後綴的文件在 Linux/Mac 上運行。例如，create_user.exe 和 create_user 可執行文件。
-
-* 3. 將配置好的 config.yaml 文件複製到 bin 目錄。
-
-## 3. 調用命令 📞
-
-### 3.1. 註冊新用戶 🆕
-
-
-前往 SDK 的 bin 目錄，並在其中的 config.yaml 文件中修改 UserOpenId 字段。
-
-運行 create_user 或 create_user.exe 可執行文件，在平台上註冊新用戶。
-
-如果您嘗試註冊已註冊的 UserOpenId，將返回錯誤。
-
-
-### 3.2. 錢包註冊 💼
-
-前往 SDK 的 bin 目錄，並在 config.yaml 文件中指定 `UserOpenId` 和 `ChainID` 字段。
-
-運行 `create_wallet` 或 `create_wallet.exe` 可執行文件，在平台上完成用戶的錢包註冊。
-
-### 3.3. 獲取充值地址 📍
-
-前往 SDK 的 bin 目錄，並在 config.yaml 中指定 `UserOpenId` 和 `ChainIDs` 字段。
-
-運行 `get_wallet_addresses` 或 `get_wallet_addresses.exe` 可執行文件。
-
-### 3.4. 提現 💸
-
-前往 SDK 的 bin 目錄，並在 config.yaml 中指定 `UserOpenId`、`TokenId`、`Amount`、`AddressTo`、`SafeCheckCode` 和 `CallbackUrl` 字段。
-
-運行 `user_withdraw_by_open_id` 或 `user_withdraw_by_open_id.exe` 可執行文件。
+#### 申請提現
+1. 在 `bin/config.yaml` 中指定：
+   * `UserOpenId`
+   * `TokenId`
+   * `Amount`
+   * `AddressTo`
+   * `SafeCheckCode` (唯一的訂單防重碼)
+   * `CallbackUrl`
+2. 運行 `./user_withdraw_by_open_id`。

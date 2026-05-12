@@ -1,24 +1,27 @@
 # CryptoPay Go SDK
 
-![Versión de Go](https://img.shields.io/badge/go-1.18+-blue.svg)
-[![Licencia: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Go Version](https://img.shields.io/badge/go-1.18+-blue.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Telegram](https://img.shields.io/badge/chat-Telegram-blue?logo=telegram)](https://t.me/ZeroSerivce)
 
-## 🌟 Bienvenido al CryptoPay Go SDK
+## Bienvenido a CryptoPay Go SDK
 
-CryptoPay Go SDK es un SDK profesional de servicios de criptomonedas implementado en Golang, que proporciona registro de usuarios, generación de billeteras, notificaciones de callbacks de depósitos, retiros y otras funciones.
+CryptoPay Go SDK es un SDK de servicio de criptomonedas profesional implementado en Golang, que proporciona funciones como registro de usuarios, generación de billeteras, notificaciones de devolución de llamadas de depósitos y retiros.
+Ha sido ampliamente utilizado y ha demostrado ser seguro, estable y fácilmente ampliable.
 
-Ha sido probado como seguro, estable y fácil de extender a través de un uso a largo plazo.
-
-## ⚙️ Instalación
+## Instalación
 
 ```bash
 go get github.com/zerospace-ai/pay-sdk-go
 ```
 
-Nota: La compilación requiere Go 1.18+ 🛠️.
-## 🚀 Inicio Rápido
-### 1. ⚙️ config.yaml
+> **Nota:** La compilación requiere Go 1.18+.
+
+## Inicio Rápido
+
+### 1. Preparar la Configuración
+
+Antes de utilizar el SDK, debe preparar el archivo de configuración `config.yaml`, que contiene la información de autenticación del comerciante y las claves públicas/privadas:
 
 ```yaml
 ApiKey: "your_api_key"
@@ -28,108 +31,61 @@ PlatformRiskPubKey: "platform_risk_public_key"
 RsaPrivateKey: "your_rsa_private_key"
 ```
 
-Descripciones de campos:
+> **💡 Consejo:** Para obtener detalles sobre cómo generar el propio par de claves RSA del comerciante (`RsaPrivateKey`) y los mecanismos detallados de autenticación y seguridad, lea [Autenticación y Seguridad (authentication.md)](./authentication.md).
 
-• 🔑 ApiKey / ApiSecret:
+### 2. Inicializar el SDK y Enviar Solicitud
 
-Asignados por la plataforma al registrar una cuenta de comerciante, utilizados para la autenticación de solicitudes API ✅.
+Aquí hay un ejemplo completo que demuestra cómo inicializar la instancia del SDK y llamar a la API "Crear Nuevo Usuario":
 
-• 🛡️ PlatformPubKey / PlatformRiskPubKey:
+```go
+package main
 
-Claves públicas proporcionadas por la plataforma, utilizadas para verificar datos o firmas de callbacks devueltos por la plataforma, asegurando fuentes de información confiables. PlatformRiskPubKey se usa principalmente para verificación de eventos relacionados con control de riesgos ⚠️.
+import (
+	"fmt"
+	"github.com/spf13/viper"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+)
 
-• 🗝️ RsaPrivateKey:
+func main() {
+	// 1. Cargar configuración
+	viper.SetConfigFile("config.yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
 
-Clave privada RSA generada por el comerciante, utilizada para firmar solicitudes, asegurando que el contenido de la solicitud no sea alterado. Nota importante: La clave privada debe mantenerse confidencial 🔒, no la divulgue 🚫.
+	// 2. Crear instancia del SDK
+	apiObj := api.NewSDK(api.SDKConfig{
+		ApiKey:             viper.GetString("ApiKey"),
+		ApiSecret:          viper.GetString("ApiSecret"),
+		PlatformPubKey:     viper.GetString("PlatformPubKey"),
+		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
+		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
+	})
 
-### 2. Generar Par de Claves RSA 🔐
+	// 3. Llamar a la API: Construir la solicitud para crear un nuevo usuario
+	openId := "PT00001" // Identificador único del usuario
+	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
+	if err != nil {
+		fmt.Printf("Error al construir la solicitud: %v\n", err)
+		return
+	}
 
-Usar un par de claves RSA para firmar solicitudes asegura la seguridad de los datos. A continuación se describe cómo generar un par de claves y extraer cadenas de claves en diferentes sistemas operativos.
-
-#### 2.1 Generar Par de Claves Usando OpenSSL
-
-```bash
-# Generar clave privada de 2048 bits
-openssl genrsa -out rsa_private_key.pem 2048
-
-# Generar clave pública a partir de la clave privada
-openssl rsa -in rsa_private_key.pem -out rsa_public_key.pem -pubout
+	// (La ejecución de la solicitud de red y el análisis de respuesta se omiten aquí, consulte examples.md para obtener el código completo)
+	fmt.Printf("¡Solicitud CreateUser construida con éxito!\nBody: %s\n", string(reqBody))
+	fmt.Printf("Headers preparados: timestamp=%s, sign=%s, clientSign=%s\n", timestamp, sign, clientSign)
+}
 ```
 
-> 💡 Consejo: La clave pública generada necesita eliminar el principio y el final -----BEGIN PUBLIC KEY----- / -----END PUBLIC KEY-----, eliminar saltos de línea, convertir a una cadena de una sola línea y enviar a la plataforma.
-> 
-> Extraer cadenas de claves y enviar la clave pública a la plataforma 📤.
->
->Los comandos para generar pares de claves RSA en Mac y Windows son los mismos que en Linux.
+## Conceptos Clave y Navegación
 
-#### 2.2 Extraer Cadenas de Claves 🔑
+Para utilizar mejor este SDK, le recomendamos que lea los documentos restantes en el siguiente orden:
 
-En Mac/Linux o Git Bash/WSL/Cygwin:
+1. **[Autenticación y Seguridad (authentication.md)](./authentication.md)**: Aprenda cómo generar pares de claves RSA y el mecanismo de verificación de firmas entre el SDK y la plataforma.
+2. **[Referencia de API (api-reference.md)](./api-reference.md)**: Contiene instrucciones detalladas para todos los puntos finales de API compatibles (por ejemplo, creación de billetera, retiro) y formatos de webhook.
+3. **[Ejemplos y Herramientas (examples.md)](./examples.md)**: Vea ejemplos de código basados en escenarios más complejos e instrucciones sobre el uso de las herramientas CLI integradas del SDK.
+4. **[Apéndice (appendix.md)](./appendix.md)**: Información de diccionario estático, como ChainIDs admitidos, tipos de tokens y direcciones de contratos.
 
-```bash
-# Extraer cadena de clave privada
-grep -v '^-----' rsa_private_key.pem | tr -d '\n'; echo
+## Contacto
 
-# Extraer cadena de clave pública
-grep -v '^-----' rsa_public_key.pem | tr -d '\n'; echo
-```
-
-Windows
-
-PowerShell extraer cadenas de clave privada y pública:
-
-```powershell
-# Clave privada
-Write-Output ((Get-Content rsa_private_key.pem | Where-Object {$_ -notmatch "^-----"}) -join "")
-
-# Clave pública
-Write-Output ((Get-Content rsa_public_key.pem | Where-Object {$_ -notmatch "^-----"}) -join "")
-```
-
-> ⚠️ Nota: La clave privada generada debe mantenerse segura y no filtrarse.
-
-
-### 🛠️ 3. Crear Instancia SDK
-
-```golang
-import "github.com/zerospace-ai/pay-sdk-go/api"
-import "github.com/spf13/viper"
-
-    viper.SetConfigFile("config.yaml")
-    if err := viper.ReadInConfig(); err != nil {
-        panic(err)
-    }
-    apiObj := api.NewSDK(api.SDKConfig{
-        ApiKey:             viper.GetString("ApiKey"),
-        ApiSecret:          viper.GetString("ApiSecret"),
-        PlatformPubKey:     viper.GetString("PlatformPubKey"),
-        PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-        RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-    })
-```
-
-## 🔑 Conceptos Clave
-
-- 🆔 **OpenId**: Identificador único del usuario, por ejemplo "HASH1756194148".
-- 🔐 **Clave RSA**: Usada para firmar y verificar solicitudes para asegurar la seguridad de los datos.
-- ✍️ **Firma API**: Usa algoritmos MD5 y RSA para firmar solicitudes, asegurando que no sean alteradas.
-
-Para descripciones detalladas de API, consulte [🧩 api-reference.md](./api-reference.md) y [🧩 examples.md](./examples.md).
-
-Para Autenticación y Seguridad, consulte [🧩 authentication.md](./authentication.md)
-
-## 📎 Apéndice
-
-Para referencias más detalladas, consulte el documento [Apéndice](./appendix.md), que incluye el siguiente contenido:
-
-- [🧩 Lista de ChainID](./appendix.md#-lista-de-chainid)
-- [🏷️ Tipos de Token](./appendix.md#-tipos-de-token)
-- [🌐 Información Pública](./appendix.md#-🌐-public-information)
-- [🔰 Información Básica de Token](./appendix.md#-🔰-token-basic-information)
-
-> 💡 **Consejo**: El apéndice proporciona información de cadenas soportadas, tipos de tokens y datos de tokens públicos, facilitando a los desarrolladores integrar y usar el SDK.
-
-## 📞 Contacto
-
-Si tiene alguna pregunta, contacte al proveedor de servicios.  
-💬 Telegram: [@ZeroSerivce](https://t.me/ZeroSerivce)
+Si tiene alguna pregunta, comuníquese con el proveedor de servicios:  
+Telegram: [@ZeroSerivce](https://t.me/ZeroSerivce)

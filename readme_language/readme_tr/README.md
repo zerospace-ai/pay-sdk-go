@@ -1,24 +1,27 @@
 # CryptoPay Go SDK
 
-![Go Sürümü](https://img.shields.io/badge/go-1.18+-blue.svg)
-[![Lisans: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Go Version](https://img.shields.io/badge/go-1.18+-blue.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Telegram](https://img.shields.io/badge/chat-Telegram-blue?logo=telegram)](https://t.me/ZeroSerivce)
 
-## 🌟 CryptoPay Go SDK'ya Hoş Geldiniz
+## CryptoPay Go SDK'ya Hoş Geldiniz
 
-CryptoPay Go SDK, Golang ile uygulanan profesyonel bir kripto para hizmeti SDK'sıdır ve kullanıcı kaydı, cüzdan oluşturma, para yatırma geri çağrı bildirimleri, para çekme ve diğer işlevleri sağlar.
+CryptoPay Go SDK, Golang ile uygulanan ve kullanıcı kaydı, cüzdan oluşturma, para yatırma geri çağırma (callback) bildirimleri ve para çekme gibi işlevler sağlayan profesyonel bir kripto para hizmeti SDK'sıdır.
+Yaygın olarak kullanılmış olup güvenli, kararlı ve kolayca genişletilebilir olduğu kanıtlanmıştır.
 
-Uzun süreli kullanım ile güvenli, istikrarlı ve genişletilmesi kolay olduğu kanıtlanmıştır.
-
-## ⚙️ Kurulum
+## Kurulum
 
 ```bash
 go get github.com/zerospace-ai/pay-sdk-go
 ```
 
-Not: Derleme için Go 1.18+ gereklidir 🛠️.
-## 🚀 Hızlı Başlangıç
-### 1. ⚙️ config.yaml
+> **Not:** Derleme için Go 1.18+ gerekir.
+
+## Hızlı Başlangıç
+
+### 1. Yapılandırmayı Hazırlama
+
+SDK'yı kullanmadan önce, tüccarın kimlik doğrulama bilgilerini ve genel/özel anahtarlarını içeren `config.yaml` yapılandırma dosyasını hazırlamanız gerekir:
 
 ```yaml
 ApiKey: "your_api_key"
@@ -28,108 +31,61 @@ PlatformRiskPubKey: "platform_risk_public_key"
 RsaPrivateKey: "your_rsa_private_key"
 ```
 
-Alan açıklamaları:
+> **💡 İpucu:** Tüccarın kendi RSA anahtar çiftini (`RsaPrivateKey`) nasıl oluşturacağı ve ayrıntılı kimlik doğrulama ile güvenlik mekanizmaları hakkında ayrıntılar için lütfen [Kimlik Doğrulama ve Güvenlik (authentication.md)](./authentication.md) bölümünü okuyun.
 
-• 🔑 ApiKey / ApiSecret:
+### 2. SDK'yı Başlatma ve İstek Gönderme
 
-Tüccar hesabı kaydederken platform tarafından atanır, API isteği kimlik doğrulaması için kullanılır ✅.
+Aşağıda, SDK örneğini nasıl başlatacağınızı ve "Yeni Kullanıcı Oluştur" API'sini nasıl çağıracağınızı gösteren eksiksiz bir örnek bulunmaktadır:
 
-• 🛡️ PlatformPubKey / PlatformRiskPubKey:
+```go
+package main
 
-Platform tarafından sağlanan genel anahtarlar, platform tarafından döndürülen verileri veya geri çağrı imzalarını doğrulamak için kullanılır, bilgi kaynaklarının güvenilir olmasını sağlar. PlatformRiskPubKey esas olarak risk kontrolü ile ilgili olay doğrulaması için kullanılır ⚠️.
+import (
+	"fmt"
+	"github.com/spf13/viper"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+)
 
-• 🗝️ RsaPrivateKey:
+func main() {
+	// 1. Yapılandırmayı yükle
+	viper.SetConfigFile("config.yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
 
-Tüccar tarafından oluşturulan RSA özel anahtarı, istekleri imzalamak için kullanılır, istek içeriğinin değiştirilmediğini sağlar. Önemli not: Özel anahtar gizli tutulmalıdır 🔒, ifşa etmeyin 🚫.
+	// 2. SDK örneği oluştur
+	apiObj := api.NewSDK(api.SDKConfig{
+		ApiKey:             viper.GetString("ApiKey"),
+		ApiSecret:          viper.GetString("ApiSecret"),
+		PlatformPubKey:     viper.GetString("PlatformPubKey"),
+		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
+		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
+	})
 
-### 2. RSA Anahtar Çifti Oluşturma 🔐
+	// 3. API Çağrısı: Yeni kullanıcı oluşturma isteği derle
+	openId := "PT00001" // Kullanıcının benzersiz kimliği
+	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
+	if err != nil {
+		fmt.Printf("İstek derleme başarısız oldu: %v\n", err)
+		return
+	}
 
-İstekleri imzalamak için RSA anahtar çifti kullanarak veri güvenliğini sağlar. Aşağıda farklı işletim sistemlerinde anahtar çifti oluşturma ve anahtar dizelerini çıkarma açıklanmaktadır.
-
-#### 2.1 OpenSSL Kullanarak Anahtar Çifti Oluşturma
-
-```bash
-# 2048-bit özel anahtar oluştur
-openssl genrsa -out rsa_private_key.pem 2048
-
-# Özel anahtardan genel anahtar oluştur
-openssl rsa -in rsa_private_key.pem -out rsa_public_key.pem -pubout
+	// (Ağ isteği yürütme ve yanıt ayrıştırma burada atlanmıştır, tam kod için lütfen examples.md'ye bakın)
+	fmt.Printf("CreateUser isteği başarıyla oluşturuldu!\nBody: %s\n", string(reqBody))
+	fmt.Printf("Header'lar hazırlandı: timestamp=%s, sign=%s, clientSign=%s\n", timestamp, sign, clientSign)
+}
 ```
 
-> 💡 İpucu: Oluşturulan genel anahtar, başlangıç ve bitiş -----BEGIN PUBLIC KEY----- / -----END PUBLIC KEY----- kaldırılmalı, satır sonları kaldırılmalı, tek satır dizesine dönüştürülmeli ve platforma gönderilmelidir.
-> 
-> Anahtar dizelerini çıkarın ve genel anahtarı platforma gönderin 📤.
->
->Mac ve Windows'ta RSA anahtar çiftlerini oluşturma komutları Linux ile aynıdır.
+## Temel Kavramlar ve Gezinme
 
-#### 2.2 Anahtar Dizelerini Çıkarma 🔑
+Bu SDK'yı daha iyi kullanabilmek için geri kalan belgeleri aşağıdaki sırayla okumanızı öneririz:
 
-Mac/Linux veya Git Bash/WSL/Cygwin'da:
+1. **[Kimlik Doğrulama ve Güvenlik (authentication.md)](./authentication.md)**: RSA anahtar çiftlerinin nasıl oluşturulacağını ve SDK ile platform arasındaki imza doğrulama mekanizmasını öğrenin.
+2. **[API Referansı (api-reference.md)](./api-reference.md)**: Desteklenen tüm API uç noktaları (örneğin, cüzdan oluşturma, para çekme) ve Webhook formatları için ayrıntılı talimatlar içerir.
+3. **[Örnekler ve Araçlar (examples.md)](./examples.md)**: Daha karmaşık senaryo tabanlı kod örneklerini ve SDK'nın yerleşik CLI araçlarının kullanım talimatlarını görün.
+4. **[Ek (appendix.md)](./appendix.md)**: Desteklenen ChainID'ler, token türleri ve sözleşme adresleri gibi statik sözlük bilgileri.
 
-```bash
-# Özel anahtar dizesini çıkar
-grep -v '^-----' rsa_private_key.pem | tr -d '\n'; echo
+## İletişim
 
-# Genel anahtar dizesini çıkar
-grep -v '^-----' rsa_public_key.pem | tr -d '\n'; echo
-```
-
-Windows
-
-PowerShell ile özel ve genel anahtar dizelerini çıkarma:
-
-```powershell
-# Özel anahtar
-Write-Output ((Get-Content rsa_private_key.pem | Where-Object {$_ -notmatch "^-----"}) -join "")
-
-# Genel anahtar
-Write-Output ((Get-Content rsa_public_key.pem | Where-Object {$_ -notmatch "^-----"}) -join "")
-```
-
-> ⚠️ Not: Oluşturulan özel anahtar güvenli tutulmalı ve sızdırılmamalıdır.
-
-
-### 🛠️ 3. SDK Örneği Oluşturma
-
-```golang
-import "github.com/zerospace-ai/pay-sdk-go/api"
-import "github.com/spf13/viper"
-
-    viper.SetConfigFile("config.yaml")
-    if err := viper.ReadInConfig(); err != nil {
-        panic(err)
-    }
-    apiObj := api.NewSDK(api.SDKConfig{
-        ApiKey:             viper.GetString("ApiKey"),
-        ApiSecret:          viper.GetString("ApiSecret"),
-        PlatformPubKey:     viper.GetString("PlatformPubKey"),
-        PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-        RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-    })
-```
-
-## 🔑 Ana Kavramlar
-
-- 🆔 **OpenId**: Kullanıcının benzersiz tanımlayıcısı, örneğin "HASH1756194148".
-- 🔐 **RSA Anahtarı**: İstekleri imzalamak ve doğrulamak için kullanılır, veri güvenliğini sağlar.
-- ✍️ **API İmzası**: İstekleri imzalamak için MD5 ve RSA algoritmalarını kullanır, değiştirilmediğini sağlar.
-
-Ayrıntılı API açıklamaları için lütfen [🧩 api-reference.md](./api-reference.md) ve [🧩 examples.md](./examples.md) dosyalarına bakın.
-
-Kimlik Doğrulama ve Güvenlik için lütfen [🧩 authentication.md](./authentication.md) dosyasına bakın
-
-## 📎 Ek
-
-Daha ayrıntılı referanslar için lütfen [Ek](./appendix.md) belgesine bakın, aşağıdaki içerikleri içerir:
-
-- [🧩 ChainID Listesi](./appendix.md#-chainid-listesi)
-- [🏷️ Token Türleri](./appendix.md#-token-türü)
-- [🌐 Genel Bilgiler](./appendix.md#-genel-bilgiler)
-- [🔰 Token Temel Bilgileri](./appendix.md#-token-temel-bilgileri)
-
-> 💡 **İpucu**: Ek, desteklenen zincir bilgilerini, token türlerini ve genel token verilerini sağlar, geliştiricilerin SDK'yi entegre etmesini ve kullanmasını kolaylaştırır.
-
-## 📞 İletişim
-
-Herhangi bir sorunuz varsa, lütfen hizmet sağlayıcısıyla iletişime geçin.  
-💬 Telegram: [@ZeroSerivce](https://t.me/ZeroSerivce)
+Herhangi bir sorunuz varsa, lütfen servis sağlayıcısıyla iletişime geçin:  
+Telegram: [@ZeroSerivce](https://t.me/ZeroSerivce)

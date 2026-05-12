@@ -4,22 +4,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Telegram](https://img.shields.io/badge/chat-Telegram-blue?logo=telegram)](https://t.me/ZeroSerivce)
 
-## 🌟 欢迎使用 CryptoPay Go SDK
+## 欢迎使用 CryptoPay Go SDK
 
 CryptoPay Go SDK 是一个专业的加密货币服务 SDK，使用 Golang 实现，提供用户注册、钱包生成、充值回调通知、提现等功能。
-
 它经过长期使用，已被证明安全、稳定且易于扩展。
 
-## ⚙️ 安装
+## 安装
 
 ```bash
 go get github.com/zerospace-ai/pay-sdk-go
 ```
 
-注意：编译需要 Go 1.18+ 🛠️。
+> **注意：** 编译需要 Go 1.18+。
 
-## 🚀 快速入门
-### 1. ⚙️ config.yaml
+## 快速入门
+
+### 1. 准备配置
+
+在使用 SDK 之前，您需要准备 `config.yaml` 配置文件，其中包含商户的认证信息和公私钥：
 
 ```yaml
 ApiKey: "your_api_key"
@@ -29,113 +31,61 @@ PlatformRiskPubKey: "platform_risk_public_key"
 RsaPrivateKey: "your_rsa_private_key"
 ```
 
-字段描述：
+> **💡 提示：** 关于如何生成商户自己的 RSA 密钥对（RsaPrivateKey），以及详细的认证与安全机制，请务必阅读 [认证与安全 (authentication.md)](./authentication.md)。
 
-• 🔑 ApiKey / ApiSecret：
+### 2. 初始化 SDK 并发送请求
 
-在注册商户账户时由平台分配，用于 API 请求认证 ✅。
+以下是一个完整的示例，展示如何初始化 SDK 实例并调用“注册新用户”接口：
 
-• 🛡️ PlatformPubKey / PlatformRiskPubKey：
+```go
+package main
 
-平台提供的公钥，用于验证平台返回的数据或回调签名，确保信息来源可靠。PlatformRiskPubKey 主要用于风险控制相关事件验证 ⚠️。
+import (
+	"fmt"
+	"github.com/spf13/viper"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+)
 
-• 🗝️ RsaPrivateKey：
+func main() {
+	// 1. 加载配置
+	viper.SetConfigFile("config.yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
 
-商户生成的 RSA 私钥，用于对请求签名，确保请求内容未被篡改。重要提示：私钥必须保密 🔒，不要泄露 🚫。
+	// 2. 创建 SDK 实例
+	apiObj := api.NewSDK(api.SDKConfig{
+		ApiKey:             viper.GetString("ApiKey"),
+		ApiSecret:          viper.GetString("ApiSecret"),
+		PlatformPubKey:     viper.GetString("PlatformPubKey"),
+		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
+		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
+	})
 
-### 2. 生成 RSA 密钥对 🔐
+	// 3. 调用 API：构建注册新用户请求
+	openId := "PT00001" // 用户的唯一标识符
+	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
+	if err != nil {
+		fmt.Printf("请求构建失败: %v\n", err)
+		return
+	}
 
-使用 RSA 密钥对对请求进行签名，确保数据安全。以下描述了在不同操作系统上生成密钥对并提取密钥字符串的方法。
-
-#### 2.1 使用 OpenSSL 生成密钥对
-
-```bash
-# Generate 2048-bit private key
-openssl genrsa -out rsa_private_key.pem 2048
-
-# Generate public key from private key
-openssl rsa -in rsa_private_key.pem -out rsa_public_key.pem -pubout
+	// （此处省略网络请求发起与返回数据解析过程，详细完整代码请参考 examples.md）
+	fmt.Printf("成功构建 CreateUser 请求!\nBody: %s\n", string(reqBody))
+	fmt.Printf("Headers 准备完毕: timestamp=%s, sign=%s, clientSign=%s\n", timestamp, sign, clientSign)
+}
 ```
 
-> 💡 Tip: 生成的公钥需要去掉开头和结尾的 -----BEGIN PUBLIC KEY----- / -----END PUBLIC KEY-----，去掉换行符，转换为单行字符串后提交到平台。
-> 
-> 提取关键字符串，并将公钥提交到平台。 📤。
->
-> 在 Mac 和 Windows 上生成 RSA 密钥对的命令与 Linux 相同。
+## 关键概念与导航
 
-#### 2.2 提取密钥字符串 🔑
+为了更好地使用本 SDK，建议您按照以下顺序阅读其余文档：
 
-On Mac/Linux or Git Bash/WSL/Cygwin:
+1. **[认证与安全 (authentication.md)](./authentication.md)**：学习如何生成 RSA 密钥对，以及 SDK 与平台之间的签名验证机制。
+2. **[API 参考 (api-reference.md)](./api-reference.md)**：包含所有受支持的 API 接口的详细说明（如创建钱包、提现等）和回调通知格式。
+3. **[示例代码与工具 (examples.md)](./examples.md)**：查看更复杂的场景化示例代码，以及 SDK 内置命令行工具的使用方法。
+4. **[附录 (appendix.md)](./appendix.md)**：支持的 ChainID、代币类型、合约地址等静态字典信息。
 
-```bash
-# Extract private key string
-grep -v '^-----' rsa_private_key.pem | tr -d '\n'; echo
+## 联系方式
 
-# Extract public key string
-grep -v '^-----' rsa_public_key.pem | tr -d '\n'; echo
-```
-
-Windows
-
-PowerShell 提取私钥和公钥字符串：
-
-```powershell
-# Private key
-Write-Output ((Get-Content rsa_private_key.pem | Where-Object {$_ -notmatch "^-----"}) -join "")
-
-# Public key
-Write-Output ((Get-Content rsa_public_key.pem | Where-Object {$_ -notmatch "^-----"}) -join "")
-```
-
-> ⚠️ 注意：生成的私钥必须妥善保管，严禁泄露。
-
-
-### 🛠️ 3. 创建 SDK 实例
-
-```golang
-import "github.com/zerospace-ai/pay-sdk-go/api"
-import "github.com/spf13/viper"
-
-    viper.SetConfigFile("config.yaml")
-    if err := viper.ReadInConfig(); err != nil {
-        panic(err)
-    }
-    apiObj := api.NewSDK(api.SDKConfig{
-        ApiKey:             viper.GetString("ApiKey"),
-        ApiSecret:          viper.GetString("ApiSecret"),
-        PlatformPubKey:     viper.GetString("PlatformPubKey"),
-        PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-        RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-    })
-```
-
-## 🔑 关键概念
-
-- 🆔 **OpenId**：用户的唯一标识符，例如 "HASH1756194148"。
-
-- 🔐 **RSA Key**：用于签名和验证请求，以确保数据安全。
-
-- ✍️ **API Signature**：使用 MD5 和 RSA 算法对请求进行签名，确保未被篡改。
-
-有关详细的 API 描述，请参阅 [🧩 api-reference.md](./api-reference.md) 和 [🧩 examples.md](./examples.md)。
-
-有关认证与安全，请参阅 [🧩 authentication.md](./authentication.md)
-
-## 📎 附录
-
-有关更多详细参考，请查看 [附录](./appendix.md) 文档，其中包括以下内容：
-
-- [🧩 ChainID 列表](./appendix.md#-chainid-列表)
-
-- [🏷️ Token 类型](./appendix.md#-token-类型)
-
-- [🌐 公共信息](./appendix.md#-公共信息)
-
-- [🔰 Token 基本信息](./appendix.md#-token-基本信息)
-
-> 💡 **Tip**: 附录提供了支持的链信息、代币类型和公开的代币数据，使开发者更容易集成和使用 SDK。
-
-## 📞 联系方式
-
-如果您有任何问题，请联系服务提供商。  
-💬 Telegram: [@ZeroSerivce](https://t.me/ZeroSerivce)
+如果您有任何问题，请联系服务提供商：  
+Telegram: [@ZeroSerivce](https://t.me/ZeroSerivce)

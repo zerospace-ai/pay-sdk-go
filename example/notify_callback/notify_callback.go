@@ -9,27 +9,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-	"github.com/zerospace-ai/pay-sdk-go/api"
+	"github.com/zerospace-ai/pay-sdk-go/example/common"
 	"github.com/zerospace-ai/pay-sdk-go/response_define"
 	"github.com/zerospace-ai/pay-sdk-go/rsa_utils"
 )
 
 func main() {
+	_, apiObj := common.Init()
 	r := gin.Default()
-
-	viper.SetConfigFile("config.yaml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("Failed to load config: %s", err))
-	}
-	apiObj := api.NewSDK(api.SDKConfig{
-		ApiKey:             viper.GetString("ApiKey"),
-		ApiSecret:          viper.GetString("ApiSecret"),
-		PlatformPubKey:     viper.GetString("PlatformPubKey"),
-		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-	})
 
 	r.POST("/withdraw_callback", func(c *gin.Context) {
 

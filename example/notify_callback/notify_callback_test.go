@@ -7,30 +7,21 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/zerospace-ai/pay-sdk-go/api"
+	"github.com/zerospace-ai/pay-sdk-go/example/common"
 	"github.com/zerospace-ai/pay-sdk-go/response_define"
 )
 
 func TestCallbackVerify(t *testing.T) {
-
-	viper.SetConfigFile("config.yaml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("Failed to load config: %s", err))
-	}
-	apiObj := api.NewSDK(api.SDKConfig{
-		ApiKey:             viper.GetString("ApiKey"),
-		ApiSecret:          viper.GetString("ApiSecret"),
-		PlatformPubKey:     viper.GetString("PlatformPubKey"),
-		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-	})
+	_, apiObj := common.Init()
 
 	body := []byte(viper.GetString("CBRsp"))
 
 	req := response_define.RequestTokenCb{}
 	fmt.Println("Raw JSON:", string(body))
 	err := json.Unmarshal(body, &req)
+	if err != nil {
+		t.Fatalf("json.Unmarshal fail: %v", err)
+	}
 
 	mapData := make(map[string]string)
 
@@ -46,5 +37,4 @@ func TestCallbackVerify(t *testing.T) {
 		return
 	}
 	logrus.Infoln(req)
-
 }

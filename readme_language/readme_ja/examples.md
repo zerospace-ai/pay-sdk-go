@@ -1,174 +1,89 @@
-# 例 📝
+# 例とツール
 
-このドキュメントは、CryptoPay Go SDKの使用例を提供します。Demoの実行、キーの生成、およびコールバックの処理を含みます。
+このドキュメントは 2 つの部分に分かれています。
+1. **シナリオベースのコード例:** 実際のコードで API 呼び出しと検証を処理する方法を示します。
+2. **CLI ツールガイド:** クイックテストのために SDK に含まれているコンパイル済み実行可能ファイルの使用方法について説明します。
 
-## 1 SDKインスタンスオブジェクト 🛠️
+---
 
-### 1.1 必要な設定 ⚙️
+## 1. シナリオベースのコード例
 
-1. ビジネス名を登録し、`ApiKey` と `ApiSecret` を取得します；
+### 1.1 完全な API 呼び出しと応答の検証
 
-2. 独自の `RSA` キーペアを生成します；
+次のコードは、SDK を使用して「ユーザー作成」リクエストを構築し、HTTP リクエストを送信し、プラットフォームから返されたデータの署名のセキュリティを検証する方法を示しています。
 
-3. プラットフォームの `RSA` 公開鍵を準備します；
+```go
+package main
 
-### 1.2 署名オブジェクトの作成 🔏
+import (
+	"fmt"
+	"github.com/zerospace-ai/pay-sdk-go/api"
+	"github.com/zerospace-ai/pay-sdk-go/example/common"
+	"github.com/zerospace-ai/pay-sdk-go/response_define"
+)
 
-1. 設定ファイル `config.yaml` を追加します。
+func main() {
+	// 1. SDK の初期化と Resty クライアントの再利用 (前提条件: config.yaml が構成されていること)
+	_, apiObj := common.Init()
 
-```yaml
-# ビジネス情報を設定
-ApiKey: ""
-ApiSecret: ""
-# プラットフォーム公開鍵
-PlatformPubKey: ""
-# プラットフォームのブロック公開鍵
-PlatformRiskPubKey: ""
-# 独自の秘密鍵
-RsaPrivateKey: ""
-```
-
-2. 設定ファイルをロードし、APIオブジェクトを作成します。
-
-```golang
-
-	viper.SetConfigFile("config.yaml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("Failed to load config: %s", err))
-	}
-	apiObj := api.NewSDK(api.SDKConfig{
-		ApiKey:             viper.GetString("ApiKey"),
-		ApiSecret:          viper.GetString("ApiSecret"),
-		PlatformPubKey:     viper.GetString("PlatformPubKey"),
-		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
-		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
-	})
-
-```
-
-### 1.3 リクエストデータの作成と署名 ✍️
-
-ユーザー作成を例にします。
-
-```golang
-
-  // ....
+	// 2. リクエストパラメーターと署名ヘッダーを生成する
 	openId := "HASH1756194148"
-
 	reqBody, timestamp, sign, clientSign, err := apiObj.CreateUser(openId)
 	if err != nil {
-		logrus.Warnln("Error: ", err)
+		fmt.Println("リクエストの構築に失敗しました: ", err)
 		return
 	}
 
+	// 3. リクエストを送信し、応答署名を自動的に検証する
+	var rspCreateUser response_define.ResponseCreateUser
+	err = common.ExecuteRequest(api.PathCreateUser, reqBody, timestamp, sign, clientSign, &rspCreateUser)
+	if err != nil {
+		fmt.Println("リクエストまたは検証に失敗しました: ", err)
+		return
+	}
+
+	fmt.Println("✅ リクエストが成功し、検証されました! 返された OpenId:", rspCreateUser.Data.OpenId)
+}
 ```
 
-```golang
-    dataStr := rsa_utils.ComposeParams(mapData)
 
-	timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
-	sign = s.GenerateMD5Sign(dataStr, timestamp)
+---
 
-	jStr, err := json.Marshal(&req)
-	if err != nil {
-		return nil, timestamp, sign, clientSign, err
-	}
+## 2. CLI ツールの使用ガイド
 
-	reqMapObj := rsa_utils.ToStringMap(jStr)
-	clientSign, err = s.GenerateRSASignature(reqMapObj)
-```
+SDK には、各 API エンドポイントをすばやくテストするためのコマンドラインインターフェース (CLI) バイナリファイルが用意されています。
 
-### 1.4 リクエストの入力と開始 🚀
+### 2.1 実行可能ファイルのコンパイル
 
-```golang
-  // ....
-	
-	finalURL, err := url.JoinPath(api.DevNetEndpoint, api.PathCreateWallet)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
+SDK のルートディレクトリで `make` コマンドを実行すると、システムは `bin` ディレクトリの各機能のバイナリ実行可能ファイルを生成します。
+* **Windows:** `.exe` で終わるファイルを生成します (例: `create_user.exe`)。
+* **Mac/Linux:** 拡張子のないファイルを生成します (例: `create_user`)。
 
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(reqBody).
-		SetHeader("key", apiObj.GetApiKey()).
-		SetHeader("timestamp", timestamp).
-		SetHeader("sign", sign).
-		SetHeader("clientSign", clientSign).
-		Post(finalURL)
+### 2.2 設定ファイルの準備
 
-```
+ツールを実行する前に、設定済みの `config.yaml` ファイルが `bin` ディレクトリに配置されていることを確認してください。
 
-### 1.5 返却データの検証と解析 ✅
+### 2.3 エンドポイントコマンドのテスト
 
-```golang
+#### 新規ユーザーの登録
+1. `bin/config.yaml` の `UserOpenId` フィールドを変更します。
+2. `./create_user` を実行します (または `create_user.exe` をダブルクリックします)。
+3. OpenId がすでに登録されている場合、ツールはエラーを返します。
 
-	rspCommon := response_define.ResponseCommon{}
-	err = json.Unmarshal(body, &rspCommon)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("Response: ", rspCommon)
+#### ウォレットの登録
+1. `bin/config.yaml` で `UserOpenId` と `ChainID` を指定します。
+2. `./create_wallet` を実行します。
 
-	if rspCommon.Code != response_define.SUCCESS {
-		logrus.Warnln("Response fail Code", rspCommon.Code, "Msg", rspCommon.Msg)
-		return
-	}
+#### 入金アドレスの取得
+1. `bin/config.yaml` で、`UserOpenId` とクエリする `ChainIDs` (例: "1,56") を指定します。
+2. `./get_wallet_addresses` を実行します。
 
-	rspCreateUser := response_define.ResponseCreateUser{}
-	err = json.Unmarshal(body, &rspCreateUser)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-	logrus.Infoln("ResponseCreateUser: ", rspCreateUser)
-
-	mapObj := rsa_utils.ToStringMap(body)
-	err = apiObj.VerifyRSAsignature(mapObj, rspCreateUser.Sign)
-	if err != nil {
-		logrus.Warnln("Error: ", err)
-		return
-	}
-
-```
-
-## 2. 実行可能なインターフェースコマンドの生成
-
-* 1. SDKルートディレクトリでmakeコマンドを実行し、binディレクトリに各機能コマンドのバイナリ実行可能ファイルを生成します。
-
-* 2. ".exe" サフィックスのファイルは64ビットWindowsマシンで実行されます；サフィックスなしのファイルはLinux/Macで実行されます。例えば、create_user.exe と create_user 実行可能ファイル。
-
-* 3. 設定されたconfig.yamlファイルをbinディレクトリにコピーします。
-
-## 3. コマンドの呼び出し 📞
-
-### 3.1. 新規ユーザーの登録 🆕
-
-
-SDKのbinディレクトリに移動し、そこにあるconfig.yamlファイルのUserOpenIdフィールドを変更します。
-
-create_user または create_user.exe 実行可能ファイルを実行して、プラットフォームに新規ユーザーを登録します。
-
-すでに登録されている新規UserOpenIdを登録しようとすると、エラーが返されます。
-
-
-### 3.2. ウォレット登録 💼
-
-SDKのbinディレクトリに移動し、`config.yaml` ファイルで `UserOpenId` と `ChainID` フィールドを指定します。
-
-`create_wallet` または `create_wallet.exe` 実行可能ファイルを実行して、プラットフォームでのユーザーのウォレット登録を完了します。
-
-### 3.3. 入金アドレスの取得 📍
-
-SDKのbinディレクトリに移動し、`config.yaml` で `UserOpenId` と `ChainIDs` フィールドを指定します。
-
-`get_wallet_addresses` または `get_wallet_addresses.exe` 実行可能ファイルを実行します。
-
-### 3.4. 出金 💸
-
-SDKのbinディレクトリに移動し、`config.yaml` で `UserOpenId`、`TokenId`、`Amount`、`AddressTo`、`SafeCheckCode`、および `CallbackUrl` フィールドを指定します。
-
-`user_withdraw_by_open_id` または `user_withdraw_by_open_id.exe` 実行可能ファイルを実行します。
+#### 出金の申請
+1. `bin/config.yaml` で次を指定します。
+   * `UserOpenId`
+   * `TokenId`
+   * `Amount`
+   * `AddressTo`
+   * `SafeCheckCode` (一意の注文重複防止コード)
+   * `CallbackUrl`
+2. `./user_withdraw_by_open_id` を実行します。
