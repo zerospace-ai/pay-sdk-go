@@ -11,6 +11,9 @@ Bu belge, istek parametreleri, dönüş parametreleri ve örnekler dahil olmak �
 5. [Kullanıcı Para Çekme (user_withdraw_by_open_id)](#5-kullanıcı-para-çekme-user_withdraw_by_open_id)
 6. [Para Çekme Siparişi İkincil İnceleme (Webhook)](#6-para-çekme-siparişi-ikincil-inceleme-webhook)
 7. [Para Yatırma ve Para Çekme Geri Çağırma Bildirimi (Webhook)](#7-para-yatırma-ve-para-çekme-geri-çağırma-bildirimi-webhook)
+8. [Kasa Siparişi Oluştur (new_order)](#8-kasa-siparişi-oluştur-new_order)
+9. [Kasa Siparişi Ödeme Başarısı Geri Çağırma (Webhook)](#9-kasa-siparişi-ödeme-başarısı-geri-çağırma-webhook)
+10. [Cüzdan Bakiyesini Sorgula (wallet_balance)](#10-cüzdan-bakiyesini-sorgula-wallet_balance)
 
 ---
 
@@ -263,3 +266,129 @@ Platform, iş tarafına token işlem durumu (para çekme başarısı/başarısı
 
 ### Tüccardan Beklenen Yanıt
 Başarıyla alınırsa, lütfen `{"code": 0}` içeren bir JSON yanıt gövdesi döndürün.
+
+---
+
+## 8. Kasa Siparişi Oluştur (new_order)
+
+### API Açıklaması
+Bu arayüz, tüccarlar tarafından ödeme veya yükleme isteklerini başlatmak için kullanılır. Sistem bir ödeme adresi (Kasa URL'si) döndürür ve kullanıcı sonraki ödeme işlemini tamamlamak için bu adresi ziyaret edebilir.
+
+### HTTP İsteği
+* **URL:** `https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder`
+* **Yöntem:** `POST`
+
+### İstek Parametreleri
+| Parametre Adı | Zorunlu mu? | Tür | Açıklama |
+| :--- | :--- | :--- | :--- |
+| `outOrderNo` | Evet | string | Tüccar tarafındaki benzersiz sipariş kimliği (mükerrer gönderimi önlemek ve mutabakat için kullanılır) |
+| `tokenId` | Evet | integer | Belirteç (Token) Kimliği |
+| `quantity` | Evet | decimal | Sipariş tutarı/miktarı |
+| `notifyUrl` | Hayır | string | Başarılı ödemeden sonra asenkron geri çağırma bildirim adresi |
+
+### Yanıt Parametreleri
+*(Global Bilgileri İçerir)*
+| Parametre Adı | Tür | Açıklama |
+| :--- | :--- | :--- |
+| `data.orderNo` | string | Platform tarafından oluşturulan benzersiz sipariş kimliği |
+| `data.outOrderNo` | string | Tüccar tarafından iletilen orijinal sipariş kimliği |
+| `data.cashierUrl` | string | **Temel Alan**: Kasa sayfası adresi. Tüccarların ödeme için kullanıcıları bu bağlantıya yönlendirmesi gerekir. |
+
+### Kod Örneği (cURL)
+```bash
+curl --location 'https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'clientSign: your_rsa_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1770606706659' \
+--data '{  
+  "outOrderNo": "1234623",   
+  "tokenId": 6,   
+  "quantity": 0.01,   
+  "notifyUrl": "https://your-domain.com/callback"   
+}'
+```
+
+---
+
+## 9. Kasa Siparişi Ödeme Başarısı Geri Çağırma (Webhook)
+
+### Geri Çağırma Açıklaması
+Kullanıcı kasa sayfasında ödemeyi tamamladıktan sonra, DogPay tüccar tarafından sağlanan `notifyUrl` adresine asenkron bir geri çağırma bildirimi gönderecektir.
+
+### Platform Tarafından Başlatılan HTTP İsteği
+* **Yöntem:** `POST`
+* **URL:** Tüccar tarafından sağlanan `notifyUrl`
+
+### Geri Çağırma Parametreleri
+| Parametre Adı | Tür | Açıklama |
+| :--- | :--- | :--- |
+| `orderId` | string | Platform sistem sipariş kimliği |
+| `outOrderId` | string | Tüccar orijinal sipariş kimliği |
+| `orderStatus` | string | **Sipariş Durumu**: 2 genellikle Başarılı Ödemeyi temsil eder |
+| `tokenId` | string | Belirteç Kimliği |
+| `quantityPaid` | string | **Kullanıcı tarafından ödenen gerçek miktar** |
+| `sign` | string | **Veri İmzası** (sahte geri çağırmaları önlemek için tüccar doğrulaması için kullanılır) |
+
+### Tüccardan Beklenen Yanıt
+Başarıyla alınırsa, lütfen aşağıdaki JSON'u döndürün:
+```json
+{
+  "code": "1",
+  "message": "success"
+}
+```
+
+---
+
+## 10. Cüzdan Bakiyesini Sorgula (wallet_balance)
+
+### API Açıklaması
+Belirtilen bir blokzincir ağındaki belirli bir cüzdan adresi için token veya yerel para birimi bakiyesini sorgular.
+
+### HTTP İsteği
+* **URL:** `https://sandbox-api.privatex.io/sdk/wallet/balance`
+* **Yöntem:** `POST`
+
+### İstek Parametreleri
+| Parametre Adı | Zorunlu | Tür | Açıklama |
+| :--- | :--- | :--- | :--- |
+| `address` | Evet | string | Cüzdan adresi |
+| `contractAddress` | Evet | string | Token sözleşme adresi veya token sembolü (örn. `"XRP"`, `"USDT"`) |
+| `chainId` | Evet | integer | Zincir Kimliği (örn. XRP için `5`, Ethereum için `1`, BNB Chain için `56`) |
+
+### Yanıt Parametreleri
+*(Genel Bilgileri İçerir)*
+| Parametre Adı | Tür | Açıklama |
+| :--- | :--- | :--- |
+| `code` | integer | Genel durum kodu (`1` başarıyı gösterir) |
+| `msg` | string | Durum açıklaması |
+| `data` | string | Token / coin bakiye miktarı (en küçük birim cinsinden) |
+| `timestamp` | string | Yanıt zaman damgası (milisaniye) |
+| `sign` | string | Platform veri imzası |
+
+### Örnek Kod (cURL)
+```bash
+curl --location --request POST 'https://sandbox-api.privatex.io/sdk/wallet/balance' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data-raw '{
+  "address":"rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "contractAddress":"XRP",
+  "chainId":5
+}'
+```
+
+### Yanıt Örneği
+```json
+{
+  "sign" : "",
+  "timestamp" : "1725432397796",
+  "data" : "1979984",
+  "msg" : "ok",
+  "code" : 1
+}
+```

@@ -40,15 +40,38 @@ func StructToMap(data interface{}) (map[string]string, error) {
 	result := make(map[string]string)
 
 	val := reflect.ValueOf(data)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	if val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("unsupported type: %s, expected struct", val.Kind())
+	}
 	typ := val.Type()
 
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldName := typ.Field(i).Tag.Get("json")
+		if fieldName == "" {
+			fieldName = typ.Field(i).Name
+		}
+		if commaIdx := strings.Index(fieldName, ","); commaIdx != -1 {
+			fieldName = fieldName[:commaIdx]
+		}
+		if fieldName == "-" {
+			continue
+		}
 
 		switch field.Kind() {
 		case reflect.String:
 			result[fieldName] = field.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result[fieldName] = fmt.Sprintf("%d", field.Int())
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			result[fieldName] = fmt.Sprintf("%d", field.Uint())
+		case reflect.Bool:
+			result[fieldName] = fmt.Sprintf("%t", field.Bool())
+		case reflect.Float32, reflect.Float64:
+			result[fieldName] = fmt.Sprintf("%v", field.Float())
 		default:
 			return nil, fmt.Errorf("unsupported field type: %s", field.Kind())
 		}

@@ -87,3 +87,11 @@ Before running the tools, ensure that the configured `config.yaml` file is place
    * `SafeCheckCode` (Unique order anti-duplication code)
    * `CallbackUrl`
 2. Run `./user_withdraw_by_open_id`.
+
+#### Create Cashier Order
+1. Specify `OutOrderNo`, `TokenId`, `Quantity`, and `NotifyUrl` in `bin/config.yaml`.
+2. Run `./new_order`.
+
+#### Query Wallet Balance
+1. Specify `WalletAddress`, `ContractAddress`, and `WalletBalanceChainId` in `bin/config.yaml`.
+2. Run `./wallet_balance`.

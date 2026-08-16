@@ -87,3 +87,11 @@ SDK のルートディレクトリで `make` コマンドを実行すると、�
    * `SafeCheckCode` (一意の注文重複防止コード)
    * `CallbackUrl`
 2. `./user_withdraw_by_open_id` を実行します。
+
+#### レジ注文の作成
+1. `bin/config.yaml` で `OutOrderNo`, `TokenId`, `Quantity`, `NotifyUrl` を指定します。
+2. `./new_order` を実行します。
+
+#### ウォレット残高照会
+1. `bin/config.yaml` で `WalletAddress`, `ContractAddress`, `WalletBalanceChainId` を指定します。
+2. `./wallet_balance` を実行します。

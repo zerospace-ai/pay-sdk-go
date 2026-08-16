@@ -1,11 +1,25 @@
 package rsa_utils
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 )
+
+func TestMD5(t *testing.T) {
+	hash := md5.New()
+	data := "OpenId=HASH1756783445"
+	io.WriteString(hash, data)
+	hashInBytes := hash.Sum(nil)
+	fmt.Println(hex.EncodeToString(hashInBytes))
+	// e10adc3949ba59abbe56e057f20f883e
+	// e10adc3949ba59abbe56e057f20f883e
+}
 
 func TestRSAUtils(t *testing.T) {
 	rawStr := "OpenId=HASH13900000002"

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/zerospace-ai/pay-sdk-go/request_define"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -29,8 +30,10 @@ func TestRSAVerify(t *testing.T) {
 		return
 	}
 
-	viper.SetConfigFile("config.yaml")
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("../")
 	if err := viper.ReadInConfig(); err != nil {
 		panic(fmt.Sprintf("Failed to load config: %s", err))
 	}
@@ -47,4 +50,62 @@ func TestRSAVerify(t *testing.T) {
 	err = apiObj.VerifyRSAsignature(mapData, rsp.Sign)
 
 	logrus.Infoln("TestRSAVerify", err)
+}
+
+func TestRSASignature(t *testing.T) {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("../")
+	if err := viper.ReadInConfig(); err != nil {
+		panic(fmt.Sprintf("Failed to load config: %s", err))
+	}
+	apiObj := NewSDK(SDKConfig{
+		ApiKey:             viper.GetString("ApiKey"),
+		ApiSecret:          viper.GetString("ApiSecret"),
+		PlatformPubKey:     viper.GetString("PlatformPubKey"),
+		PlatformRiskPubKey: viper.GetString("PlatformRiskPubKey"),
+		RsaPrivateKey:      viper.GetString("RsaPrivateKey"),
+	})
+
+	req := request_define.RequestCreateUser{
+		OpenID: "123456",
+	}
+
+	jStr, err := json.Marshal(&req)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to Marshal: %s", err))
+	}
+
+	reqMapObj := rsa_utils.ToStringMap(jStr)
+	clientSign, err := apiObj.GenerateRSASignature(reqMapObj)
+
+	mapData := rsa_utils.ToStringMap([]byte(jStr))
+
+	err = apiObj.VerifyRSAsignature(mapData, clientSign)
+
+	logrus.Infoln("TestRSAVerify", err)
+}
+
+func TestJsonToMap(t *testing.T) {
+	jStr := `{
+  "sign" : "UDXzq9PIyS/LlaJ+O+/gnJn17N/fdKWD/4+u7i7i2CzF1LSiUEKw7i0KkMii5uVLXb7FaqVzWgG2M5Gzo5d14/nqrQJ0xD1aAg44wb3SjR5BdenOdvBxgcAm4IlA+i4ifJzIR5l1Rgxbjrxqgz+455XuMcccXkinwEgB+c+qG+/lGIcnBzRugqy1SayUFAvcZO1HH67g42MciAEgZjU9qaR+rjjQpXP3YlALQBDWaQg423LlgL+Il2N97CIRVgOtcLlpB1/eq6nHJx5haH3jSHAdeSj9hKRgEsuOneR7BRHSFh5JyLP5GSn2kCcuEES23f9PoQNlnjZ1UGFpC3Z76w==",
+  "timestamp" : "1757147834383",
+  "data" : {
+    "Addresses" : [ {
+      "address" : "0x9034670cee1564887e16b73e53228298d8bab302",
+      "chainID" : 56
+    }, {
+      "address" : "TVPePaxhekW4s8TcunbwfK74MGJXfdQLW2",
+      "chainID" : 2
+    } ],
+    "PartnerId" : 133,
+    "OpenId" : "HASH202509061500"
+  },
+  "msg" : "ok",
+  "code" : 1
+}`
+
+	mapData := rsa_utils.ToStringMap([]byte(jStr))
+	logrus.Infoln(mapData)
 }

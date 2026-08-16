@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
@@ -22,9 +23,11 @@ var (
 
 func Init() (*resty.Client, *api.Sdk) {
 	once.Do(func() {
-		viper.SetConfigFile("config.yaml")
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
 		viper.AddConfigPath(".")
-		viper.AddConfigPath("../") // Support running from example subdirectories
+		viper.AddConfigPath("../")    // Support running from example subdirectories
+		viper.AddConfigPath("../../") // Support running tests from nested subdirectories
 		if err := viper.ReadInConfig(); err != nil {
 			panic(fmt.Sprintf("Failed to load config: %s", err))
 		}
@@ -38,6 +41,9 @@ func Init() (*resty.Client, *api.Sdk) {
 		})
 
 		client = resty.New().
+			SetTimeout(15*time.Second).
+			SetRetryCount(3).
+			SetRetryWaitTime(2*time.Second).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("key", apiObj.GetApiKey())
 	})
@@ -78,7 +84,7 @@ func ExecuteRequest(path string, reqBody []byte, timestamp, sign, clientSign str
 	}
 
 	if rspCommon.Code != response_define.SUCCESS {
-		return fmt.Errorf("api error: code=%s, msg=%s", rspCommon.Code, rspCommon.Msg)
+		return fmt.Errorf("api error: code=%d, msg=%s", rspCommon.Code, rspCommon.Msg)
 	}
 
 	// Unmarshal to specific response object

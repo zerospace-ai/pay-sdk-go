@@ -11,6 +11,9 @@
 5. [사용자 출금 (user_withdraw_by_open_id)](#5-사용자-출금-user_withdraw_by_open_id)
 6. [출금 주문 2차 검토 (Webhook)](#6-출금-주문-2차-검토-webhook)
 7. [입금 및 출금 콜백 알림 (Webhook)](#7-입금-및-출금-콜백-알림-webhook)
+8. [카셔 주문 생성 (new_order)](#8-카셔-주문-생성-new_order)
+9. [카셔 주문 결제 성공 콜백 (Webhook)](#9-카셔-주문-결제-성공-콜백-webhook)
+10. [지갑 잔액 조회 (wallet_balance)](#10-지갑-잔액-조회-wallet_balance)
 
 ---
 
@@ -262,4 +265,130 @@ curl --location 'https://sandbox-api.privatex.io/sdk/partner/UserWithdrawByOpenI
 | `timestamp` | 예 | string | 푸시 타임스탬프 |
 
 ### 가맹점의 예상 응답
-성공적으로 수신되면 `{"code": 0}`이 포함된 JSON 응답 본문을 반환하십시오.
+성공적으로 수신된 경우 `{"code": 0}`이 포함된 JSON 응답 본문을 반환하십시오.
+
+---
+
+## 8. 카셔 주문 생성 (new_order)
+
+### API 설명
+이 인터페이스는 가맹점이 결제 또는 충전 요청을 시작하는 데 사용됩니다. 시스템은 결제 주소(카셔 URL)를 반환하며, 사용자는 이 주소를 방문하여 후속 결제 프로세스를 완료할 수 있습니다.
+
+### HTTP 요청
+* **URL:** `https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder`
+* **메서드:** `POST`
+
+### 요청 매개변수
+| 매개변수 이름 | 필수 여부 | 유형 | 설명 |
+| :--- | :--- | :--- | :--- |
+| `outOrderNo` | 예 | string | 가맹점 측의 고유 주문 번호(중복 제출 방지 및 대조용) |
+| `tokenId` | 예 | integer | 토큰 ID |
+| `quantity` | 예 | decimal | 주문 금액/수량 |
+| `notifyUrl` | 아니요 | string | 결제 성공 후의 비동기 콜백 알림 주소 |
+
+### 응답 매개변수
+*(전역 정보 포함)*
+| 매개변수 이름 | 유형 | 설명 |
+| :--- | :--- | :--- |
+| `data.orderNo` | string | 플랫폼에서 생성한 고유 주문 ID |
+| `data.outOrderNo` | string | 가맹점에서 전달한 원래 주문 ID |
+| `data.cashierUrl` | string | **핵심 필드**: 카셔 페이지 주소. 가맹점은 사용자를 이 링크로 안내하여 결제해야 합니다. |
+
+### 코드 예시 (cURL)
+```bash
+curl --location 'https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'clientSign: your_rsa_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1770606706659' \
+--data '{  
+  "outOrderNo": "1234623",   
+  "tokenId": 6,   
+  "quantity": 0.01,   
+  "notifyUrl": "https://your-domain.com/callback"   
+}'
+```
+
+---
+
+## 9. 카셔 주문 결제 성공 콜백 (Webhook)
+
+### 콜백 설명
+사용자가 카셔 페이지에서 결제를 완료하면 DogPay는 가맹점에서 제공한 `notifyUrl`로 비동기 콜백 알림을 보냅니다.
+
+### 플랫폼에서 시작하는 HTTP 요청
+* **메서드:** `POST`
+* **URL:** 가맹점에서 제공한 `notifyUrl`
+
+### 콜백 매개변수
+| 매개변수 이름 | 유형 | 설명 |
+| :--- | :--- | :--- |
+| `orderId` | string | 플랫폼 시스템 주문 ID |
+| `outOrderId` | string | 가맹점 원래 주문 ID |
+| `orderStatus` | string | **주문 상태**: 2는 일반적으로 결제 성공을 나타냄 |
+| `tokenId` | string | 토큰 ID |
+| `quantityPaid` | string | **사용자가 실제로 결제한 수량** |
+| `sign` | string | **데이터 서명**(콜백 위조 방지를 위한 가맹점 검증에 사용) |
+
+### 가맹점의 예상 응답
+성공적으로 수신된 경우 다음 JSON을 반환하십시오.
+```json
+{
+  "code": "1",
+  "message": "success"
+}
+```
+
+---
+
+## 10. 지갑 잔액 조회 (wallet_balance)
+
+### API 설명
+지정된 블록체인 네트워크에서 특정 지갑 주소의 토큰 또는 네이티브 코인 잔액을 조회합니다.
+
+### HTTP 요청
+* **URL:** `https://sandbox-api.privatex.io/sdk/wallet/balance`
+* **메서드:** `POST`
+
+### 요청 매개변수
+| 매개변수 이름 | 필수 여부 | 유형 | 설명 |
+| :--- | :--- | :--- | :--- |
+| `address` | 예 | string | 지갑 주소 |
+| `contractAddress` | 예 | string | 토큰 계약 주소 또는 토큰 심볼 (예: `"XRP"`, `"USDT"`) |
+| `chainId` | 예 | integer | 체인 ID (예: XRP의 경우 `5`, Ethereum의 경우 `1`, BNB Chain의 경우 `56`) |
+
+### 응답 매개변수
+*(글로벌 정보 포함)*
+| 매개변수 이름 | 유형 | 설명 |
+| :--- | :--- | :--- |
+| `code` | integer | 글로벌 상태 코드 (`1`은 성공) |
+| `msg` | string | 상태 설명 |
+| `data` | string | 토큰/코인 잔액 수량 (최소 단위 문자열) |
+| `timestamp` | string | 응답 타임스탬프 (밀리초) |
+| `sign` | string | 플랫폼 데이터 서명 |
+
+### 예제 코드 (cURL)
+```bash
+curl --location --request POST 'https://sandbox-api.privatex.io/sdk/wallet/balance' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data-raw '{
+  "address":"rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "contractAddress":"XRP",
+  "chainId":5
+}'
+```
+
+### 응답 예제
+```json
+{
+  "sign" : "",
+  "timestamp" : "1725432397796",
+  "data" : "1979984",
+  "msg" : "ok",
+  "code" : 1
+}
+```

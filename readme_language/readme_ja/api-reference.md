@@ -11,6 +11,9 @@
 5. [ユーザー出金 (user_withdraw_by_open_id)](#5-ユーザー出金-user_withdraw_by_open_id)
 6. [出金注文の二次審査 (Webhook)](#6-出金注文の二次審査-webhook)
 7. [入金および出金コールバック通知 (Webhook)](#7-入金および出金コールバック通知-webhook)
+8. [レジ注文の作成 (new_order)](#8-レジ注文の作成-new_order)
+9. [レジ注文支払い成功コールバック (Webhook)](#9-レジ注文支払い成功コールバック-webhook)
+10. [ウォレット残高照会 (wallet_balance)](#10-ウォレット残高照会-wallet_balance)
 
 ---
 
@@ -263,3 +266,129 @@ curl --location 'https://sandbox-api.privatex.io/sdk/partner/UserWithdrawByOpenI
 
 ### 加盟店からの予想される応答
 正常に受信した場合は、`{"code": 0}` を含む JSON 応答本文を返してください。
+
+---
+
+## 8. レジ注文の作成 (new_order)
+
+### API の説明
+このインターフェースは、加盟店が支払いまたはチャージリクエストを開始するために使用されます。システムは支払いアドレス（レジ URL）を返し、ユーザーはこのアドレスにアクセスして後続の支払いプロセスを完了できます。
+
+### HTTP リクエスト
+* **URL:** `https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder`
+* **メソッド:** `POST`
+
+### リクエストパラメーター
+| パラメーター名 | 必須 | タイプ | 説明 |
+| :--- | :--- | :--- | :--- |
+| `outOrderNo` | はい | string | 加盟店側の一意の注文番号（重複送信の防止および照合用） |
+| `tokenId` | はい | integer | トークン ID |
+| `quantity` | はい | decimal | 注文金額/数量 |
+| `notifyUrl` | いいえ | string | 支払い成功後の非同期コールバック通知アドレス |
+
+### 応答パラメーター
+*(グローバル情報を含む)*
+| パラメーター名 | タイプ | 説明 |
+| :--- | :--- | :--- |
+| `data.orderNo` | string | プラットフォームによって生成された一意の注文 ID |
+| `data.outOrderNo` | string | 加盟店から渡された元の注文 ID |
+| `data.cashierUrl` | string | **コアフィールド**: レジページの住所。加盟店はユーザーをこのリンクに誘導して支払う必要があります。 |
+
+### コード例 (cURL)
+```bash
+curl --location 'https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'clientSign: your_rsa_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1770606706659' \
+--data '{  
+  "outOrderNo": "1234623",   
+  "tokenId": 6,   
+  "quantity": 0.01,   
+  "notifyUrl": "https://your-domain.com/callback"   
+}'
+```
+
+---
+
+## 9. レジ注文支払い成功コールバック (Webhook)
+
+### コールバックの説明
+ユーザーがレジページで支払いを完了した後、DogPay は加盟店から提供された `notifyUrl` に非同期コールバック通知を送信します。
+
+### プラットフォームによって開始される HTTP リクエスト
+* **メソッド:** `POST`
+* **URL:** 加盟店から提供された `notifyUrl`
+
+### コールバックパラメーター
+| パラメーター名 | タイプ | 説明 |
+| :--- | :--- | :--- |
+| `orderId` | string | プラットフォームのシステム注文 ID |
+| `outOrderId` | string | 加盟店の元の注文 ID |
+| `orderStatus` | string | **注文ステータス**: 2 は通常、支払い成功を表します |
+| `tokenId` | string | トークン ID |
+| `quantityPaid` | string | **ユーザーが実際に支払った数量** |
+| `sign` | string | **データ署名**（コールバックの偽造を防ぐための加盟店検証に使用） |
+
+### 加盟店からの予想される応答
+正常に受信した場合は、次の JSON を返してください。
+```json
+{
+  "code": "1",
+  "message": "success"
+}
+```
+
+---
+
+## 10. ウォレット残高照会 (wallet_balance)
+
+### API の説明
+指定されたブロックチェーンネットワーク上の特定のウォレットアドレスのトークンまたはネイティブコインの残高を照会します。
+
+### HTTP リクエスト
+* **URL:** `https://sandbox-api.privatex.io/sdk/wallet/balance`
+* **メソッド:** `POST`
+
+### リクエストパラメーター
+| パラメーター名 | 必須 | タイプ | 説明 |
+| :--- | :--- | :--- | :--- |
+| `address` | はい | string | ウォレットアドレス |
+| `contractAddress` | はい | string | コントラクトアドレスまたはトークンシンボル（例: `"XRP"`、`"USDT"`） |
+| `chainId` | はい | integer | チェーン ID（例: XRP の場合は `5`、Ethereum の場合は `1`、BNB Chain の場合は `56`） |
+
+### 応答パラメーター
+*(グローバル情報を含む)*
+| パラメーター名 | タイプ | 説明 |
+| :--- | :--- | :--- |
+| `code` | integer | グローバルステータスコード（`1` は成功） |
+| `msg` | string | ステータスの説明 |
+| `data` | string | トークン/コイン残高（最小単位文字列） |
+| `timestamp` | string | 応答タイムスタンプ（ミリ秒） |
+| `sign` | string | プラットフォーム署名データ |
+
+### コード例 (cURL)
+```bash
+curl --location --request POST 'https://sandbox-api.privatex.io/sdk/wallet/balance' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data-raw '{
+  "address":"rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "contractAddress":"XRP",
+  "chainId":5
+}'
+```
+
+### 応答例
+```json
+{
+  "sign" : "",
+  "timestamp" : "1725432397796",
+  "data" : "1979984",
+  "msg" : "ok",
+  "code" : 1
+}
+```

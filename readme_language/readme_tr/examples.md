@@ -87,3 +87,11 @@ Araçları çalıştırmadan önce, yapılandırılmış `config.yaml` dosyasın
    * `SafeCheckCode` (Benzersiz sipariş kopyalamayı önleme kodu)
    * `CallbackUrl`
 2. `./user_withdraw_by_open_id` komutunu çalıştırın.
+
+#### Kasa Siparişi Oluştur
+1. `bin/config.yaml` dosyasında `OutOrderNo`, `TokenId`, `Quantity` ve `NotifyUrl` bilgilerini belirtin.
+2. `./new_order` komutunu çalıştırın.
+
+#### Cüzdan Bakiyesini Sorgula
+1. `bin/config.yaml` dosyasında `WalletAddress`, `ContractAddress` ve `WalletBalanceChainId` bilgilerini belirtin.
+2. `./wallet_balance` komutunu çalıştırın.

@@ -11,6 +11,9 @@
 5. [用户提现 (user_withdraw_by_open_id)](#5-用户提现-user_withdraw_by_open_id)
 6. [提现订单二次审查 (Webhook)](#6-提现订单二次审查-webhook)
 7. [充值和提现回调通知 (Webhook)](#7-充值和提现回调通知-webhook)
+8. [创建收银台订单 (new_order)](#8-创建收银台订单-new_order)
+9. [收银台订单支付成功回调 (Webhook)](#9-收银台订单支付成功回调-webhook)
+10. [查询钱包余额 (wallet_balance)](#10-查询钱包余额-wallet_balance)
 
 ---
 
@@ -263,3 +266,129 @@ curl --location 'https://sandbox-api.privatex.io/sdk/partner/UserWithdrawByOpenI
 
 ### 业务端（商户）需响应的内容
 接收成功请返回包含 `{"code": 0}` 的 JSON 响应体。
+
+---
+
+## 8. 创建收银台订单 (new_order)
+
+### 接口说明
+该接口用于商户发起支付或充值请求，系统会返回一个支付地址（收银台 URL），用户访问该地址即可完成后续支付流程。
+
+### HTTP 请求
+* **URL:** `https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder`
+* **方法:** `POST`
+
+### 请求参数
+| 参数名称 | 必填 | 类型 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `outOrderNo` | 是 | string | 商户侧唯一订单号，用于防止重复提交及对账 |
+| `tokenId` | 是 | integer | 币种 ID |
+| `quantity` | 是 | decimal | 订单金额/数量 |
+| `notifyUrl` | 否 | string | 支付成功后的异步回调通知地址 |
+
+### 响应参数
+*(包含公共信息)*
+| 参数名称 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `data.orderNo` | string | 平台生成的唯一订单号 |
+| `data.outOrderNo` | string | 商户传入的原始订单号 |
+| `data.cashierUrl` | string | **核心字段**：收银台页面地址，商户需引导用户跳转至该链接进行支付 |
+
+### 示例代码 (cURL)
+```bash
+curl --location 'https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'clientSign: your_rsa_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1770606706659' \
+--data '{  
+  "outOrderNo": "1234623",   
+  "tokenId": 6,   
+  "quantity": 0.01,   
+  "notifyUrl": "https://your-domain.com/callback"   
+}'
+```
+
+---
+
+## 9. 收银台订单支付成功回调 (Webhook)
+
+### 回调说明
+当用户在收银台完成支付后，DogPay 会向商户提供的 `notifyUrl` 发送异步回调通知。
+
+### 平台发起的 HTTP 请求
+* **方法:** `POST`
+* **URL:** 商户提供的 `notifyUrl`
+
+### 回调参数
+| 参数名称 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `orderId` | string | 平台系统订单号 |
+| `outOrderId` | string | 商户原始订单号 |
+| `orderStatus` | string | **订单状态**：2 通常代表支付成功 |
+| `tokenId` | string | 币种 ID |
+| `quantityPaid` | string | **用户实付数量** |
+| `sign` | string | **数据签名**（用于商户验签，防止回调被伪造） |
+
+### 业务端（商户）需响应的内容
+接收成功请返回如下 JSON：
+```json
+{
+  "code": "1",
+  "message": "success"
+}
+```
+
+---
+
+## 10. 查询钱包余额 (wallet_balance)
+
+### 接口说明
+查询指定区块链网络上某个钱包地址的代币或主币余额。
+
+### HTTP 请求
+* **URL:** `https://sandbox-api.privatex.io/sdk/wallet/balance`
+* **方法:** `POST`
+
+### 请求参数
+| 参数名称 | 必填 | 类型 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `address` | 是 | string | 钱包地址 |
+| `contractAddress` | 是 | string | 合约地址或代币标识（如 `"XRP"`、`"USDT"`） |
+| `chainId` | 是 | integer | 链 ID（如 `5` 为 XRP，`1` 为 Ethereum，`56` 为 BNB Chain） |
+
+### 响应参数
+*(包含公共信息)*
+| 参数名称 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `code` | integer | 全局状态码（`1` 表示成功） |
+| `msg` | string | 状态描述信息 |
+| `data` | string | 余额数量（最小单位字符串） |
+| `timestamp` | string | 响应时间戳（毫秒） |
+| `sign` | string | 平台数据签名 |
+
+### 示例代码 (cURL)
+```bash
+curl --location --request POST 'https://sandbox-api.privatex.io/sdk/wallet/balance' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data-raw '{
+  "address":"rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "contractAddress":"XRP",
+  "chainId":5
+}'
+```
+
+### 响应示例
+```json
+{
+  "sign" : "",
+  "timestamp" : "1725432397796",
+  "data" : "1979984",
+  "msg" : "ok",
+  "code" : 1
+}
+```

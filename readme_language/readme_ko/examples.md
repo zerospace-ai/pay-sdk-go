@@ -87,3 +87,11 @@ SDK 루트 디렉터리에서 `make` 명령을 실행하면 시스템이 `bin` �
    * `SafeCheckCode` (고유한 주문 중복 방지 코드)
    * `CallbackUrl`
 2. `./user_withdraw_by_open_id`를 실행합니다.
+
+#### 카셔 주문 생성
+1. `bin/config.yaml`에서 `OutOrderNo`, `TokenId`, `Quantity`, `NotifyUrl`을 지정합니다.
+2. `./new_order`를 실행합니다.
+
+#### 지갑 잔액 조회
+1. `bin/config.yaml`에서 `WalletAddress`, `ContractAddress`, `WalletBalanceChainId`를 지정합니다.
+2. `./wallet_balance`를 실행합니다.

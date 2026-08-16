@@ -87,3 +87,11 @@ SDK предоставляет бинарные файлы интерфейса 
    * `SafeCheckCode` (Уникальный код для предотвращения дублирования заказа)
    * `CallbackUrl`
 2. Запустите `./user_withdraw_by_open_id`.
+
+#### Создание кассового ордера
+1. Укажите `OutOrderNo`, `TokenId`, `Quantity` и `NotifyUrl` в `bin/config.yaml`.
+2. Запустите `./new_order`.
+
+#### Запрос баланса кошелька
+1. Укажите `WalletAddress`, `ContractAddress` и `WalletBalanceChainId` в `bin/config.yaml`.
+2. Запустите `./wallet_balance`.

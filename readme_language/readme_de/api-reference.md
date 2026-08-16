@@ -11,6 +11,9 @@ Dieses Dokument enthält detaillierte Informationen zu allen API-Endpunkten des 
 5. [Benutzerauszahlung (user_withdraw_by_open_id)](#5-benutzerauszahlung-user_withdraw_by_open_id)
 6. [Zweitprüfung für Auszahlungsaufträge (Webhook)](#6-zweitprüfung-für-auszahlungsaufträge-webhook)
 7. [Ein- und Auszahlungs-Rückrufbenachrichtigung (Webhook)](#7-ein--und-auszahlungs-rückrufbenachrichtigung-webhook)
+8. [Kassenbestellung erstellen (new_order)](#8-kassenbestellung-erstellen-new_order)
+9. [Kassenbestellung Zahlungsbestätigung Callback (Webhook)](#9-kassenbestellung-zahlungsbestätigung-callback-webhook)
+10. [Wallet-Guthaben abfragen (wallet_balance)](#10-wallet-guthaben-abfragen-wallet_balance)
 
 ---
 
@@ -262,4 +265,130 @@ Die Plattform pusht asynchrone Benachrichtigungen über den Token-Transaktionsst
 | `timestamp` | Ja | string | Push-Zeitstempel |
 
 ### Erwartete Antwort vom Händler
-Wenn erfolgreich empfangen, geben Sie bitte einen JSON-Antwortkörper zurück, der `{"code": 0}` enthält.
+Bei erfolgreichem Empfang geben Sie bitte einen JSON-Antwortkörper mit `{"code": 0}` zurück.
+
+---
+
+## 8. Kassenbestellung erstellen (new_order)
+
+### API-Beschreibung
+Diese Schnittstelle wird von Händlern verwendet, um Zahlungs- oder Aufladeanfragen zu initiieren. Das System gibt eine Zahlungsadresse (Cashier-URL) zurück, die der Benutzer besuchen kann, um den nachfolgenden Zahlungsvorgang abzuschließen.
+
+### HTTP-Anfrage
+* **URL:** `https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder`
+* **Methode:** `POST`
+
+### Anfrageparameter
+| Parametername | Erforderlich | Typ | Beschreibung |
+| :--- | :--- | :--- | :--- |
+| `outOrderNo` | Ja | string | Eindeutige Bestellnummer auf der Händlerseite (zur Vermeidung von Doppelübermittlungen und zum Abgleich) |
+| `tokenId` | Ja | integer | Token-ID |
+| `quantity` | Ja | decimal | Bestellbetrag/-menge |
+| `notifyUrl` | Nein | string | Asynchrone Callback-Benachrichtigungsadresse nach erfolgreicher Zahlung |
+
+### Antwortparameter
+*(Enthält globale Informationen)*
+| Parametername | Typ | Beschreibung |
+| :--- | :--- | :--- |
+| `data.orderNo` | string | Vom System generierte eindeutige Bestell-ID |
+| `data.outOrderNo` | string | Vom Händler übermittelte ursprüngliche Bestell-ID |
+| `data.cashierUrl` | string | **Kernfeld**: Adresse der Kassenseite. Händler müssen Benutzer zu diesem Link leiten, um die Zahlung vorzunehmen. |
+
+### Codebeispiel (cURL)
+```bash
+curl --location 'https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'clientSign: your_rsa_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1770606706659' \
+--data '{  
+  "outOrderNo": "1234623",   
+  "tokenId": 6,   
+  "quantity": 0.01,   
+  "notifyUrl": "https://your-domain.com/callback"   
+}'
+```
+
+---
+
+## 9. Kassenbestellung Zahlungsbestätigung Callback (Webhook)
+
+### Callback-Beschreibung
+Nachdem der Benutzer die Zahlung auf der Kassenseite abgeschlossen hat, sendet DogPay eine asynchrone Callback-Benachrichtigung an die vom Händler angegebene `notifyUrl`.
+
+### Von der Plattform initiierte HTTP-Anfrage
+* **Methode:** `POST`
+* **URL:** Vom Händler bereitgestellte `notifyUrl`
+
+### Callback-Parameter
+| Parametername | Typ | Beschreibung |
+| :--- | :--- | :--- |
+| `orderId` | string | Plattform-Systembestellnummer |
+| `outOrderId` | string | Ursprüngliche Händlerbestellnummer |
+| `orderStatus` | string | **Bestellstatus**: 2 bedeutet normalerweise erfolgreiche Zahlung |
+| `tokenId` | string | Token-ID |
+| `quantityPaid` | string | **Tatsächlich vom Benutzer bezahlte Menge** |
+| `sign` | string | **Datensignatur** (wird zur Händlerüberprüfung verwendet, um gefälschte Callbacks zu verhindern) |
+
+### Erwartete Antwort vom Händler
+Geben Sie bei erfolgreichem Empfang das folgende JSON zurück:
+```json
+{
+  "code": "1",
+  "message": "success"
+}
+```
+
+---
+
+## 10. Wallet-Guthaben abfragen (wallet_balance)
+
+### API-Beschreibung
+Fragt das Token- oder Coin-Guthaben für eine angegebene Wallet-Adresse in einem bestimmten Blockchain-Netzwerk ab.
+
+### HTTP-Anfrage
+* **URL:** `https://sandbox-api.privatex.io/sdk/wallet/balance`
+* **Methode:** `POST`
+
+### Anfrageparameter
+| Parametername | Erforderlich | Typ | Beschreibung |
+| :--- | :--- | :--- | :--- |
+| `address` | Ja | string | Wallet-Adresse |
+| `contractAddress` | Ja | string | Token-Vertragsadresse oder Token-Symbol (z. B. `"XRP"`, `"USDT"`) |
+| `chainId` | Ja | integer | Chain-ID (z. B. `5` für XRP, `1` für Ethereum, `56` für BNB Chain) |
+
+### Antwortparameter
+*(Enthält globale Informationen)*
+| Parametername | Typ | Beschreibung |
+| :--- | :--- | :--- |
+| `code` | integer | Globaler Statuscode (`1` für Erfolg) |
+| `msg` | string | Statusbeschreibung |
+| `data` | string | Token- / Coin-Guthabenbetrag (in kleinsten Einheiten) |
+| `timestamp` | string | Antwortzeitstempel (Millisekunden) |
+| `sign` | string | Plattform-Datensignatur |
+
+### Codebeispiel (cURL)
+```bash
+curl --location --request POST 'https://sandbox-api.privatex.io/sdk/wallet/balance' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data-raw '{
+  "address":"rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "contractAddress":"XRP",
+  "chainId":5
+}'
+```
+
+### Antwortbeispiel
+```json
+{
+  "sign" : "",
+  "timestamp" : "1725432397796",
+  "data" : "1979984",
+  "msg" : "ok",
+  "code" : 1
+}
+```

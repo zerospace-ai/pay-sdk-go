@@ -15,6 +15,9 @@ func TestCallbackVerify(t *testing.T) {
 	_, apiObj := common.Init()
 
 	body := []byte(viper.GetString("CBRsp"))
+	if len(body) == 0 {
+		t.Skip("CBRsp is not configured in config.yaml")
+	}
 
 	req := response_define.RequestTokenCb{}
 	fmt.Println("Raw JSON:", string(body))

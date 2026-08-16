@@ -11,6 +11,9 @@ AddressTo: "TQdL5yttJPTx7hJmBhGfo2LcE7AXLPtHSg"
 SafeCheckCode: "202409132056666"
 CallbackUrl: ""
 ChainIDs: "56,2"
+WalletAddress: "TQdL5yttJPTx7hJmBhGfo2LcE7AXLPtHSg"
+ContractAddress: "USDT"
+WalletBalanceChainId: 2
 
 
 

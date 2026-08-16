@@ -11,3 +11,6 @@ AddressTo: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 SafeCheckCode: "202409132056666"
 CallbackUrl: ""
 ChainIDs: "56,2"
+WalletAddress: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+ContractAddress: "XRP"
+WalletBalanceChainId: 5

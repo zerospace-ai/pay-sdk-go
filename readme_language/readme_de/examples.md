@@ -87,3 +87,11 @@ Stellen Sie vor dem Ausführen der Tools sicher, dass sich die konfigurierte Dat
    * `SafeCheckCode` (Eindeutiger Anti-Duplikations-Code für Bestellungen)
    * `CallbackUrl`
 2. Führen Sie `./user_withdraw_by_open_id` aus.
+
+#### Kassenbestellung erstellen
+1. Geben Sie `OutOrderNo`, `TokenId`, `Quantity` und `NotifyUrl` in `bin/config.yaml` an.
+2. Führen Sie `./new_order` aus.
+
+#### Wallet-Guthaben abfragen
+1. Geben Sie `WalletAddress`, `ContractAddress` und `WalletBalanceChainId` in `bin/config.yaml` an.
+2. Führen Sie `./wallet_balance` aus.

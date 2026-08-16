@@ -87,3 +87,11 @@ SDK 提供了快速测试各接口的命令行工具二进制文件（CLI）。
    * `SafeCheckCode` (唯一的订单防重码)
    * `CallbackUrl`
 2. 运行 `./user_withdraw_by_open_id`。
+
+#### 创建收银台订单
+1. 在 `bin/config.yaml` 中指定 `OutOrderNo`, `TokenId`, `Quantity`, `NotifyUrl`。
+2. 运行 `./new_order`。
+
+#### 查询钱包余额
+1. 在 `bin/config.yaml` 中指定 `WalletAddress`, `ContractAddress`, `WalletBalanceChainId`。
+2. 运行 `./wallet_balance`。

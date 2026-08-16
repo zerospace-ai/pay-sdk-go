@@ -87,3 +87,11 @@ Antes de ejecutar las herramientas, asegúrese de que el archivo configurado `co
    * `SafeCheckCode` (Código anti-duplicación de pedido único)
    * `CallbackUrl`
 2. Ejecute `./user_withdraw_by_open_id`.
+
+#### Crear orden de caja
+1. Especifique `OutOrderNo`, `TokenId`, `Quantity` y `NotifyUrl` en `bin/config.yaml`.
+2. Ejecute `./new_order`.
+
+#### Consultar Saldo de Billetera
+1. Especifique `WalletAddress`, `ContractAddress` y `WalletBalanceChainId` en `bin/config.yaml`.
+2. Ejecute `./wallet_balance`.

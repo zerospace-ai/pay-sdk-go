@@ -10,7 +10,10 @@ Este documento detalla todos los puntos finales de la API del CryptoPay Go SDK, 
 4. [Obtener Direcciones de Depósito (get_wallet_addresses)](#4-obtener-direcciones-de-depósito-get_wallet_addresses)
 5. [Retiro de Usuario (user_withdraw_by_open_id)](#5-retiro-de-usuario-user_withdraw_by_open_id)
 6. [Revisión Secundaria de Orden de Retiro (Webhook)](#6-revisión-secundaria-de-orden-de-retiro-webhook)
-7. [Notificación de Devolución de Llamada de Depósito y Retiro (Webhook)](#7-notificación-de-devolución-de-llamada-de-depósito-y-retiro-webhook)
+7. [Notificación de callback de depósito y retiro (Webhook)](#7-notificación-de-callback-de-depósito-y-retiro-webhook)
+8. [Crear orden de caja (new_order)](#8-crear-orden-de-caja-new_order)
+9. [Callback de éxito de pago de orden de caja (Webhook)](#9-callback-de-éxito-de-pago-de-orden-de-caja-webhook)
+10. [Consultar Saldo de Billetera (wallet_balance)](#10-consultar-saldo-de-billetera-wallet_balance)
 
 ---
 
@@ -262,4 +265,130 @@ La plataforma envía notificaciones asíncronas sobre el estado de las transacci
 | `timestamp` | Sí | string | Marca de tiempo de envío (Push) |
 
 ### Respuesta Esperada del Comerciante
-Si se recibe con éxito, devuelva un cuerpo de respuesta JSON que contenga `{"code": 0}`.
+Si se recibe correctamente, devuelva un cuerpo de respuesta JSON que contenga `{"code": 0}`.
+
+---
+
+## 8. Crear orden de caja (new_order)
+
+### Descripción de la API
+Esta interfaz es utilizada por los comerciantes para iniciar solicitudes de pago o recarga. El sistema devolverá una dirección de pago (URL de caja) y el usuario puede visitar esta dirección para completar el proceso de pago posterior.
+
+### Solicitud HTTP
+* **URL:** `https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder`
+* **Método:** `POST`
+
+### Parámetros de solicitud
+| Nombre del parámetro | Requerido | Tipo | Descripción |
+| :--- | :--- | :--- | :--- |
+| `outOrderNo` | Sí | string | ID de pedido único en el lado del comerciante (utilizado para evitar envíos duplicados y para conciliación) |
+| `tokenId` | Sí | integer | ID de token |
+| `quantity` | Sí | decimal | Monto/cantidad del pedido |
+| `notifyUrl` | No | string | Dirección de notificación de callback asíncrono después de un pago exitoso |
+
+### Parámetros de respuesta
+*(Incluye información global)*
+| Nombre del parámetro | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `data.orderNo` | string | ID de pedido único generado por la plataforma |
+| `data.outOrderNo` | string | ID de pedido original pasado por el comerciante |
+| `data.cashierUrl` | string | **Campo central**: Dirección de la página de caja. Los comerciantes deben guiar a los usuarios a este enlace para el pago. |
+
+### Ejemplo de código (cURL)
+```bash
+curl --location 'https://vapi.dogpay.ai/sdk/api/v2/exchange/cashier/newOrder' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'clientSign: your_rsa_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1770606706659' \
+--data '{  
+  "outOrderNo": "1234623",   
+  "tokenId": 6,   
+  "quantity": 0.01,   
+  "notifyUrl": "https://your-domain.com/callback"   
+}'
+```
+
+---
+
+## 9. Callback de éxito de pago de orden de caja (Webhook)
+
+### Descripción del callback
+Después de que el usuario completa el pago en la página de caja, DogPay enviará una notificación de callback asíncrona a la `notifyUrl` proporcionada por el comerciante.
+
+### Solicitud HTTP iniciada por la plataforma
+* **Método:** `POST`
+* **URL:** `notifyUrl` proporcionada por el comerciante
+
+### Parámetros del callback
+| Nombre del parámetro | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `orderId` | string | ID de pedido del sistema de la plataforma |
+| `outOrderId` | string | ID de pedido original del comerciante |
+| `orderStatus` | string | **Estado del pedido**: 2 generalmente representa pago exitoso |
+| `tokenId` | string | ID de token |
+| `quantityPaid` | string | **Cantidad real pagada por el usuario** |
+| `sign` | string | **Firma de datos** (utilizada para la verificación del comerciante para evitar callbacks falsificados) |
+
+### Respuesta esperada del comerciante
+Si se recibe correctamente, devuelva el siguiente JSON:
+```json
+{
+  "code": "1",
+  "message": "success"
+}
+```
+
+---
+
+## 10. Consultar Saldo de Billetera (wallet_balance)
+
+### Descripción de la API
+Consulta el saldo de tokens o monedas para una dirección de billetera especificada en una red blockchain determinada.
+
+### Solicitud HTTP
+* **URL:** `https://sandbox-api.privatex.io/sdk/wallet/balance`
+* **Método:** `POST`
+
+### Parámetros de Solicitud
+| Nombre del Parámetro | Requerido | Tipo | Descripción |
+| :--- | :--- | :--- | :--- |
+| `address` | Sí | string | Dirección de la billetera |
+| `contractAddress` | Sí | string | Dirección del contrato o símbolo del token (p. ej., `"XRP"`, `"USDT"`) |
+| `chainId` | Sí | integer | ID de la cadena (p. ej., `5` para XRP, `1` para Ethereum, `56` para BNB Chain) |
+
+### Parámetros de Respuesta
+*(Incluye Información Global)*
+| Nombre del Parámetro | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `code` | integer | Código de estado global (`1` para éxito) |
+| `msg` | string | Descripción del estado |
+| `data` | string | Cantidad de saldo de token/moneda (en unidades mínimas) |
+| `timestamp` | string | Marca de tiempo de respuesta (milisegundos) |
+| `sign` | string | Firma de datos de la plataforma |
+
+### Código de Ejemplo (cURL)
+```bash
+curl --location --request POST 'https://sandbox-api.privatex.io/sdk/wallet/balance' \
+--header 'key: your_api_key' \
+--header 'sign: your_md5_sign' \
+--header 'Content-Type: application/json' \
+--header 'timestamp: 1725076567682' \
+--data-raw '{
+  "address":"rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "contractAddress":"XRP",
+  "chainId":5
+}'
+```
+
+### Ejemplo de Respuesta
+```json
+{
+  "sign" : "",
+  "timestamp" : "1725432397796",
+  "data" : "1979984",
+  "msg" : "ok",
+  "code" : 1
+}
+```
